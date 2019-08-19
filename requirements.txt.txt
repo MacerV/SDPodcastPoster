@@ -1,3 +1,0 @@
-re>=6.2
-praw>5.4.0
-feedparser>=5.2.1
