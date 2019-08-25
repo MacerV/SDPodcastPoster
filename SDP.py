@@ -146,29 +146,26 @@ def BOT_Submit_Favourite(comment, regex):
     return reply_text
 
 def configure_logging():
-    '''Configure the logging module. Nothing of note here. Log file
-        is one level higher than console for now. 
+    '''Configure the logging module. 
+
+        BasicConfig is used to ensure that imports that use logging
+        will have their logs piped into the logfile.This is important
+        as it means you can see PRAW timeouts, max retries,etc.
     '''
 
-    # Starts the main logger, sets its level 
-    logger = logging.getLogger('SDPBOT')
-    logger.setLevel(logging.DEBUG)
+    # creates file/console handlers. file should be always set to DEBUG.
+    file_handler = logging.FileHandler('logfile.log',mode='w')
+    file_handler.setLevel(logging.DEBUG)
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
 
-    # Sets the logfile and formatting of the log messages
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    # Configure logging using the handlers. 
+    # WARNING: Level acts as an overall level filter over handlers 
+    logging.basicConfig(
+        handlers=[file_handler,console_handler],
+        level = logging.DEBUG,
+        format='%(asctime)s - %(name)17s  - %(levelname)8s - %(message)s')          # I think this ensures that other modules using logging have their messages piped through.
     
-    # creates a file and console handler for logging and applies the formating. Overwrites previous log. 
-    main_file_handler = logging.FileHandler('logfile.log', mode='w')
-    main_file_handler.setLevel(logging.DEBUG)
-    main_file_handler.setFormatter(formatter) 
-
-    main_console_handler = logging.StreamHandler()
-    main_console_handler.setLevel(logging.INFO)
-    main_console_handler.setFormatter(formatter) 
-
-    #connect the two handlers to the main logger.
-    logger.addHandler(main_file_handler)
-    logger.addHandler(main_console_handler)
 
     return
 def get_podcast_data(rss_feed):         
@@ -316,9 +313,9 @@ def new_commands(reddit_user, reddit_connect):
                 #elif (regex.re.pattern == command_strings[5]):
                 #elif (regex.re.pattern == command_strings[6]):
                 #elif (regex.re.pattern == command_strings[7]):
-            comment_log.info("Command processed.")
-            comment_log.debug("Command Processed. \n\nCommand: {command}. Comment: {comment}")
-            comment.reply(reply_text)
+                comment_log.info("Command processed.")
+                comment_log.debug(f"Command Processed. \n\nCommand: {command}. Comment: {comment}")
+                comment.reply(reply_text)
 
 
 if __name__ == '__main__':
