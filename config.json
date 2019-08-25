@@ -1,7 +1,5 @@
 {
-    "program_data": {
-        "last_podcast_date": "2019-08-12 22:30:07+00:00",
-        "sleep_Interval": 1800,
-        "rss_feed": "http://feeds.soundcloud.com/users/soundcloud:users:46438170/sounds.rss"
-    }
+    "last_cast_dt": "2019-08-12 22:30:07+00:00",
+    "sleep_Interval": 300,
+    "rss_feed": "http://feeds.soundcloud.com/users/soundcloud:users:46438170/sounds.rss"
 }
