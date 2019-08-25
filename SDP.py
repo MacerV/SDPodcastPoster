@@ -63,26 +63,19 @@ def load_json(file):
 		raw_json = json.load(f)
 	return raw_json
 def configure_logging():
-	# Starts the main logger, sets its level 
-	logger = logging.getLogger('SDPBOT')
-	logger.setLevel(logging.DEBUG)
-
 	# Sets the logfile and formatting of the log messages
+	logging.basicConfig(filename='logfile.log',level=logging.DEBUG)
 	formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-	
-	# creates a file and console handler for logging and applies the formating. Overwrites previous log. 
-	main_file_handler = logging.FileHandler('logfile.log', mode='w')
-	main_file_handler.setLevel(logging.DEBUG)
-	main_file_handler.setFormatter(formatter) 
 
+	# creates a console handler and sets the logging level to debug
 	main_console_handler = logging.StreamHandler()
-	main_console_handler.setLevel(logging.INFO)
+	main_console_handler.setLevel(logging.DEBUG)
 	main_console_handler.setFormatter(formatter) 
 
-	#connect the two handlers to the main logger.
-	logger.addHandler(main_file_handler)
+	# Starts the main logger, sets its level and console handler. 
+	logger = logging.getLogger('SDPBOT')
+	logger.setLevel(logging.DEBUG)
 	logger.addHandler(main_console_handler)
-
 
 	return
 def get_podcast_data(rss_feed): 		# returns subset of episode data from  feedparser module
@@ -180,7 +173,7 @@ def new_coms(reddit_user, reddit_connect):
 
 	try:
 		bot_command_string = "SDPBOT!"
-		for comment in reddit_connect.subreddit('SteveDangle').stream.comments(skip_existing=True):
+		for comment in reddit_connect.subreddit('SteveDangle').stream.comments():
 
 			if bot_command_string in comment.body:
 				comment_logger.info("New command found.")
