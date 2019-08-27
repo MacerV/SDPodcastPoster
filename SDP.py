@@ -1,5 +1,6 @@
 # Import Modules
 import re, datetime, time #standard modules
+import random
 import textwrap     # standard module for removing trailing idnents in post string
 import json         # https://docs.python.org/3/library/json.html
 import logging         # https://docs.python.org/3/library/logging.html
@@ -148,6 +149,12 @@ def BOT_Submit_Favourite(comment, regex):
     except Exception as e: 
         comment_log.warning(f"Exception from timetamp parsing: {e}")
         reply_text = "Unable to parse timestamp. Confirm timestamp is available in podcast post, and that timestamp provided is in the 00:00:00 format."
+    return reply_text
+def BOT_Is_A_Hotdog_A_Sandwhich():
+    hotdogs = [["a hotdog","a sandwhich"],
+    ["cereal","soup"]]
+    random_index = random.randrange(len(hotdogs))
+    reply_text = f"I don't know, is {hotdogs[random_index][0]} {hotdogs[random_index][1]}?"
     return reply_text
 
 def configure_logging():
@@ -318,16 +325,19 @@ def new_commands(reddit_user, reddit_connect):
     '''
     comment_log = logging.getLogger('SDPBOT.Com-Search')
     command_strings = [
-        "(SDPBOT! Favourite|Favorite|favourite|favorite) (\d\d:\d\d:\d\d|\d:\d\d:\d\d)"
+        "(SDPBOT! Favourite|Favorite|favourite|favorite) (\d\d:\d\d:\d\d|\d:\d\d:\d\d)",
+        "(?:^|(?<=[.?!])) ?(?:IS|Is|is) ?a?([a-zA-Z]{3,16}) ?a? ([a-zA-Z]{3,16})\?"
     ]
     for comment in reddit_connect.subreddit('SteveDangle').stream.comments(skip_existing=True):
+        comment_log.debug(comment.body)
         for command in command_strings:        
             regex = re.search(command,comment.body)
             if regex is not None:
                 command_text = regex.group()
                 if (regex.re.pattern == command_strings[0]):
                     reply_text = BOT_Submit_Favourite(comment,regex)     
-                #elif (regex.re.pattern == command_strings[1]):
+                elif (regex.re.pattern == command_strings[1]):
+                    reply_text = BOT_Is_A_Hotdog_A_Sandwhich()
                 #elif (regex.re.pattern == command_strings[2]):
                 #elif (regex.re.pattern == command_strings[3]):
                 #elif (regex.re.pattern == command_strings[4]):
