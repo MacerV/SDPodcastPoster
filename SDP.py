@@ -1,5 +1,6 @@
 # Import Modules
 import re, datetime, time #standard modules
+import textwrap     # standard module for removing trailing idnents in post string
 import json         # https://docs.python.org/3/library/json.html
 import logging         # https://docs.python.org/3/library/logging.html
 import threading     # https://docs.python.org/3/library/threading.html
@@ -78,7 +79,7 @@ def load_json(file):           # Return the raw json string from file
     with open(file, 'r') as f:
         raw_json = json.load(f)
     return raw_json
-def dump_json(file):           # Dump raw json string to json file
+def dump_json(file,data):           # Dump raw json string to json file
     with open(file, "w") as file_Object:
         json.dump(data, file_Object, indent = 4)
 def calculate_sleeptime(sleep_Interval):
@@ -116,17 +117,21 @@ def BOT_Submit_Favourite(comment, regex):
 
     '''
 
+    comment_log = logging.getLogger('SDPBOT.Com-Search')
+
     # Grab the SoundCloud link and Duration from post text. 
     # group() & group(1) is full match, group(20)
     post_text = comment.submission.selftext
-    SC_Link =  re.search("\[Soundcloud\]\((.+)\)",post_text).group(2)    
-    Duration = re.search("Duration: (\d\d:\d\d:\d\d)", post_text).group(2)
+    SC_Link =  re.search("\[SoundCloud\]\((.+)\)",post_text).group(1)    
+    duration = datetime.datetime.strptime(
+        re.search("Duration: (\d\d:\d\d:\d\d)", post_text).group(1),
+        "%H:%M:%S")
     reply_text = ""
 
     try:
         # Try and parse timestamp and push data to favourites.json         
         timestamp = datetime.datetime.strptime(regex.group(2),"%H:%M:%S")
-        if (timestamp > Duration):
+        if (timestamp > duration):
             comment_log.warning("Invalid timestamp provided.")
             reply_text("Timestamp exceeds podcast duration, try again.")
         else:
@@ -134,14 +139,14 @@ def BOT_Submit_Favourite(comment, regex):
                 "name" : comment.author.name, 
                 "posting_time" : comment.created_utc,
                 "comment_id" : comment.id,
-                "link": SC_Link }    
-            favourites_log = load_json(file)
+                "link": f"{SC_Link}#{regex.group(2)}"}
+            favourites_log = load_json('favourites.json')
             favourites_log["Favourite Comments"].append(favourite_submission)
-            dump_json(file)
+            dump_json('favourites.json',favourites_log)
             
             reply_text = f"Adding [SoundCloudLink]({SC_Link}) to the pile of favourites."
-    except: 
-        comment_log.warning("Exception from timetamp parsing: {e}")
+    except Exception as e: 
+        comment_log.warning(f"Exception from timetamp parsing: {e}")
         reply_text = "Unable to parse timestamp. Confirm timestamp is available in podcast post, and that timestamp provided is in the 00:00:00 format."
     return reply_text
 
@@ -156,6 +161,7 @@ def configure_logging():
     # creates file/console handlers. file should be always set to DEBUG.
     file_handler = logging.FileHandler('logfile.log',mode='w')
     file_handler.setLevel(logging.DEBUG)
+    file_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)40s - %(levelname)8s - %(message)s'))
     console_handler = logging.StreamHandler()
     console_handler.setLevel(logging.INFO)
 
@@ -164,7 +170,9 @@ def configure_logging():
     logging.basicConfig(
         handlers=[file_handler,console_handler],
         level = logging.DEBUG,
-        format='%(asctime)s - %(name)17s  - %(levelname)8s - %(message)s')          # I think this ensures that other modules using logging have their messages piped through.
+        format='%(asctime)s - %(name)17s  - %(levelname)8s - %(message)s',
+        datefmt = '%Y-%m-%d %H:%M:%S'
+        )
     
 
     return
@@ -174,11 +182,17 @@ def get_podcast_data(rss_feed):
         and returns a subset of it. Also parses the publish time to 
         standard form. 
     '''
+
     cast = feedparser.parse(rss_feed).entries[0]
     episode_data = {k: cast[k] for k in (
         'id','title', 'published','link','itunes_duration','summary')}
     episode_data['published'] = datetime.datetime.strptime(
         episode_data['published'],'%a, %d %b %Y %H:%M:%S %z')
+
+
+    function_log = logging.getLogger('SDPBOT.GET_Cast')
+    function_log.debug(f"Log retrieved: {episode_data}")
+
     return episode_data
 
 
@@ -232,6 +246,7 @@ def main(reddit_user, reddit_connect):
     root_log.info("Starting threads for podcast and command searchers. ")
     podcast_thread.start()
     commands_thread.start()
+    
 
 def new_podcast(reddit_dev, reddit_connect):
     '''This function's main purpose is check every x minutes to see 
@@ -252,8 +267,9 @@ def new_podcast(reddit_dev, reddit_connect):
             if config['last_cast_dt'] == str(new_podcast_data['published']):
                 new_podcast_log.info("RSS Reviewed: No new podcast available.")
             else:   
-                for key, val in new_podcast_data.items() :     
-                    setattr(self, key, val)
+                # doesn't work in fuctions
+                # for key, val in new_podcast_data.items() :     
+                #     exec("%s = %s" % (key, val))
 
                 # Get the youtube link from podcast data.
                 it_link = "https://itunes.apple.com/ca/podcast/steve-dangle-podcast/id669828195?mt=2"
@@ -262,24 +278,29 @@ def new_podcast(reddit_dev, reddit_connect):
                     new_podcast_data['summary']).group()          
                 
                 # Build the selftext & title, and POST IT!
-                selftext =  f"""New SteveDangle Podcast!
-                                Title: {title}
-                                Duration: {itunes_duration}
-                                [SoundCloud]({link})
+                selftext =  textwrap.dedent(f"""\
+                                New SteveDangle Podcast!
+                                
+                                Title: {new_podcast_data['title']}
+
+                                Duration: {new_podcast_data['itunes_duration']}
+                                
+                                [SoundCloud]({new_podcast_data['link']})
+                                
                                 [Itunes]({it_link})
-                                [Youtube]({yt_link})"""
-                title = f"The Steve Dangle Podcast - {title}"""
-                podcastpost = reddit_dev.create_post(
-                    "SteveDangle",title, True, "new",selftext=selftext)
+                                
+                                [Youtube]({yt_link})""")
+                title = f"The Steve Dangle Podcast - {new_podcast_data['title']}"""
+                podcastpost = reddit_dev.create_sticky_post("SteveDangle",title, True, "new",selftext=selftext)
                 new_podcast_log.info(
                     f"New podcast posted! {title}. Sleeping for 36 hours.")
 
                 # Update last podcast date in config. 
                 #   This is after the post to ensure it'll only get
                 #   update on a successful post. 
-                with open("config.json", 'w') as file_Object:
-                    config['last_cast_dt'] = str(published)
-                    json.dump(config,file_Object, indent=4)
+
+                config['last_cast_dt'] = str(new_podcast_data['published'])
+                dump_json("config.json",config)
 
                 time.sleep(36*60*60)  # Podcasts never < 48 hours apart
             
@@ -305,7 +326,7 @@ def new_commands(reddit_user, reddit_connect):
             if regex is not None:
                 command_text = regex.group()
                 if (regex.re.pattern == command_strings[0]):
-                    reply_text = BOT_Submit_Favourite()     
+                    reply_text = BOT_Submit_Favourite(comment,regex)     
                 #elif (regex.re.pattern == command_strings[1]):
                 #elif (regex.re.pattern == command_strings[2]):
                 #elif (regex.re.pattern == command_strings[3]):
