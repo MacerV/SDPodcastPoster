@@ -19,68 +19,182 @@ def load_json(file):		   # Return the raw json string from file
 def dump_json(file,data):		   # Dump raw json string to json file
 	with open(file, "w") as file_Object:
 		json.dump(data, file_Object, indent = 4)
-def calculate_sleeptime(sleep_Interval, tm = 1):
-	''' This function provides a sleep time based on the current hour.  
-		Historicially less probably posting times have larger sleep intervals. 
+
+class bot_commands(threading.Thread):
+	'''Searches each comment for every command string, and calls all 
+		helper function based on the index of the regular expression(s)
+		which was successful.
+
+	'''
+
+	
+	def __init__(self, reddit_user):
+		super(bot_commands, self).__init__()
+		self.reddit_user = reddit_user
+		self.COMMAND_STRINGS = {
+			"Favourite" :	"(SDBotcast! Favourite|Favorite|favourite|favorite) (\d\d:\d\d:\d\d|\d:\d\d:\d\d)",
+			"Hotdog" 	:	"(?:^|(?<=[.?!])) ?(?:IS|Is|is) ?a? ([a-zA-Z]{3,16}) ?a? ([a-zA-Z]{3,16})\?",
+			"SoftMotherfucker" : "(?i)@ ?soft ?mother ?fucker"
+		}
+		self.comment_log = logging.getLogger('SDBotcast.Commands')
+
 		
-		Future Feature: Kernal Density Estimation based calculation.
-	'''
-	ch = datetime.datetime.now().hour
-	if (ch == 23):			   tm = 1  #  11 PM				- 5   min
-	elif(ch==0 or ch >= 22):   tm = 2  # 0-1 AM, 10-11PM  	- 10  min
-	elif(ch <= 2 or ch >= 20): tm = 3  # 1-2 AM, 8-10PM		- 15  min
-	elif(ch >= 17 or ch <4):   tm = 6  # 2-4 AM, 5-8PM	 	- 30  min
-	else:					   tm = 24 # Off-Peak hours		- 120 min
-	return tm*sleep_Interval
+		self.comment_log.info("Comment command searching thread started")
 
-### Bot Helper Procedures/Functions
-def BOT_Submit_Favourite(comment, regex):
-	'''Favourite submissions are submitted by users of /r/SteveDangle.
-		They usea command string including a timestamp which is found
-		by the regex. 
+	def run(self):
+        # while not self.shutdown_flag.is_set():
 
-		This procedure takes the favourited timestamp and pushes a
-		timestamped soundcloud link with other information to 
-		a favourites.json file for later observation.
 
-	'''
-	# Grab the SoundCloud link and Duration from post text. 
-	# group() & group(1) is full match, group(20)
-	post_text = comment.submission.selftext
-	SC_Link =  re.search("\[SoundCloud\]\((.+)\)",post_text).group(1)	
-	duration = datetime.datetime.strptime(re.search("Duration: (\d\d:\d\d:\d\d)", post_text).group(1),"%H:%M:%S")
-	reply_text = ""
+		for comment in self.reddit_user.subreddit('SteveDangle').stream.comments(skip_existing=False):
+			self.comment_log.debug(f"New Comment: {comment.body[:50]}...") 
+			for command in self.COMMAND_STRINGS:		
+				regex = re.search(command,comment.body)
 
-	try:
-		# Try and parse timestamp and push data to favourites.json		 
-		timestamp = datetime.datetime.strptime(regex.group(2),"%H:%M:%S")
-		if (timestamp > duration):
-			reply_text("Timestamp exceeds podcast duration, try again.")
-		else:
-			favourite_submission = { 
-				"name" : comment.author.name, 
-				"posting_time" : comment.created_utc,
-				"comment_id" : comment.id,
-				"comment_body" : comment.body,
-				"link": f"{SC_Link}#{regex.group(2)}"
-			}
-			favourites_log = load_json('favourites.json')
-			favourites_log["Favourite Comments"].append(favourite_submission)
-			dump_json('favourites.json',favourites_log)
+				if regex is not None:
+					if (regex.re.pattern == COMMAND_STRINGS["Favourite"]):
+						reply_text = __BOT_Submit_Favourite(comment,regex)	 
+					elif (regex.re.pattern == COMMAND_STRINGS["Hotdog"]):
+						reply_text = __BOT_Is_A_Hotdog_A_Sandwhich()
+					elif (regex.re.pattern == COMMAND_STRINGS['SoftMotherfucker']):
+						reply_text = "Don't be an @SoftMotherFucker!"
+					#elif (regex.re.pattern == COMMAND_STRINGS['']):
+					#elif (regex.re.pattern == COMMAND_STRINGS['']):
+					self.comment_log.info("Reply Text prepared: {reply_text}")
+					self.comment_log.debug(f"Command Processed. \n\nCommand: {command}. Comment: {comment}")
+					comment.reply(reply_text)
+
+	def __BOT_Submit_Favourite(self, comment, regex):
+		'''Favourite submissions are submitted by users of /r/SteveDangle.
+			They usea command string including a timestamp which is found
+			by the regex. 
+
+			This procedure takes the favourited timestamp and pushes a
+			timestamped soundcloud link with other information to 
+			a favourites.json file for later observation.
+
+		'''
+		# Grab the SoundCloud link and Duration from post text. 
+		# group() & group(1) is full match, group(20)
+		post_text = comment.submission.selftext
+		SC_Link =  re.search("\[SoundCloud\]\((.+)\)",post_text).group(1)	
+		duration = datetime.datetime.strptime(re.search("Duration: (\d\d:\d\d:\d\d)", post_text).group(1),"%H:%M:%S")
+		reply_text = ""
+
+		try:
+			# Try and parse timestamp and push data to favourites.json		 
+			timestamp = datetime.datetime.strptime(regex.group(2),"%H:%M:%S")
+			if (timestamp > duration):
+				reply_text("Timestamp exceeds podcast duration, try again.")
+			else:
+				favourite_submission = { 
+					"name" : comment.author.name, 
+					"posting_time" : comment.created_utc,
+					"comment_id" : comment.id,
+					"comment_body" : comment.body,
+					"link": f"{SC_Link}#{regex.group(2)}"
+				}
+				favourites_log = load_json('favourites.json')
+				favourites_log["Favourite Comments"].append(favourite_submission)
+				dump_json('favourites.json',favourites_log)
+				
+				reply_text = f"Adding [SoundCloudLink]({SC_Link}) to the pile of favourites."
+		except Exception as e: 
+			reply_text = f"Exception while parsing timestamp {e}."
+		return reply_text
+
+	def __BOT_Is_A_Hotdog_A_Sandwhich(self):
+		hotdogs = [
+					"a hotdog a sandwhich","cereal soup", "ketchup a jam", 
+					"ketchup a jelly", "pizza thin lazagna"
+					]
+		random_index = random.randrange(len(hotdogs))
+		reply_text = f"I don't know, is {hotdogs[random_index]}?"
+		return reply_text
+
+class bot_podcasts(threading.Thread):
+	'''This function's main purpose is check every x minutes to see 
+		if a new podcast is available to be posted to Reddit.
+
+		It'll grab the latest podcast data and if the datetime doesn't
+		matches the last known podcast date then it'll make a new
+		post!
+	'''	
+
+
+	def __init__(self, reddit_dev):
+		super(bot_podcasts, self).__init__()
+		self.reddit_dev = reddit_dev
+		self.podcast_log = logging.getLogger('SDBotcast.Poster')
+		self.config = load_json("config.json")
+
+		self.podcast_log.info("Podcast Check thread started")
+
+	def run(self):
+
+		while True:
+			try: 
+				# Get data of latest podcast, and format date to datetime.
+				cast = feedparser.parse(self.config['rss_feed']).entries[0]
+				episode_data = {k: cast[k] for k in ('id','title', 'published','link','itunes_duration','summary')}
+				episode_data['published'] = datetime.datetime.strptime(episode_data['published'],'%a, %d %b %Y %H:%M:%S %z')
+
+
+				if self.config['last_cast_dt'] == str(episode_data['published']):
+					self.podcast_log.info("RSS Reviewed: No new podcast available.")
+				else:   
+					self.podcast_log.info("RSS Reviewed: New podcast available. Processing")
+					post_title = f"The Steve Dangle Podcast - {episode_data['title']}"
+
+					it_link = "https://itunes.apple.com/ca/podcast/steve-dangle-podcast/id669828195?mt=2"
+					yt_link = re.search("https://youtu\.be/.{11}", episode_data['summary']).group()		 	 # YT vid id is 11 chars
+					selftext =  textwrap.dedent(f"""\
+									New SteveDangle Podcast!
+									
+									Title: {episode_data['title']}
+
+									Duration: {episode_data['itunes_duration']}
+									
+									[SoundCloud]({episode_data['link']})
+									
+									[Itunes]({it_link})
+									
+									[Youtube]({yt_link})
+
+									To submit a favourite SDP moment, comment: SDBotcast! Favourite (timetamp in HH:MM:SS format)""")
+					
+					# post the podcast to reddit & save to config.
+					podcastpost = reddit_user.subreddit("SteveDangle").submit(post_title, selftext = selftext)
+					podcastpost.mod.sticky()
+					podcastpost.mod.suggested_sort(sort='new')
+
+					self.config['last_cast_dt'] = str(episode_data['published'])
+					dump_json("config.json",config)
+
+					time.sleep(36*60*60)  # Podcasts never < 48 hours apart
+				
+				# Go to sleep for a set time depending on time of day.
+				time.sleep(self.__calculate_sleeptime(self.config['sleep_Interval']))
+			except Exception as e:
+				self.podcast_log.error(f"RSS reading error. Error: {e}")
+				time.sleep(900)
+				continue
+
+
+
+	def __calculate_sleeptime(self, sleep_Interval, tm = 1):
+		''' This function provides a sleep time based on the current hour.  
+			Historicially less probably posting times have larger sleep intervals. 
 			
-			reply_text = f"Adding [SoundCloudLink]({SC_Link}) to the pile of favourites."
-	except Exception as e: 
-		reply_text = f"Exception while parsing timestamp {e}."
-	return reply_text
+			Future Feature: Kernal Density Estimation based calculation.
+		'''
+		ch = datetime.datetime.now().hour
+		if (ch == 23):			   tm = 1  #  11 PM				- 5   min
+		elif(ch==0 or ch >= 22):   tm = 2  # 0-1 AM, 10-11PM  	- 10  min
+		elif(ch <= 2 or ch >= 20): tm = 3  # 1-2 AM, 8-10PM		- 15  min
+		elif(ch >= 17 or ch <4):   tm = 6  # 2-4 AM, 5-8PM	 	- 30  min
+		else:					   tm = 24 # Off-Peak hours		- 120 min
+		return tm*sleep_Interval
 
-def BOT_Is_A_Hotdog_A_Sandwhich():
-	hotdogs = [
-				"a hotdog a sandwhich","cereal soup", "ketchup a jam", 
-				"ketchup a jelly", "pizza thin lazagna"
-				]
-	random_index = random.randrange(len(hotdogs))
-	reply_text = f"I don't know, is {hotdogs[random_index]}?"
-	return reply_text
 
 def configure_logging():
 	''' A straight forward logging configuration: 
@@ -91,7 +205,7 @@ def configure_logging():
 	file_handler.setLevel(logging.DEBUG)
 	console_handler = logging.StreamHandler()
 	console_handler.setLevel(logging.INFO)
-	console_handler.setFormatter(logging.Formatter(fmt='%(asctime)s | %(name)-16.16s | %(levelname)-4s | %(message)-72s'))	
+	console_handler.setFormatter(logging.Formatter(fmt='%(asctime)s | %(name)-18.18s | %(levelname)-4s | %(message)-72s'))	
 
 	# Configure logging using the handlers. 
 	logging.basicConfig(
@@ -127,112 +241,25 @@ def main():
 		root_log.info(f.read())
 	
 	# Assigning threads for main bot functions
-	podcast_thread = threading.Thread(
-		target = new_podcast,
-		args = (SDBotcast_reddit,))  
-	commands_thread = threading.Thread(
-		target = new_commands,
-		args = (SDBotcast_reddit,)) 
-
+	podcast_thread = bot_podcasts(SDBotcast_reddit)
+	commands_thread = bot_commands(SDBotcast_reddit)
+ 
 	# Starting  threads
 	root_log.info("Starting threads for podcast and command searchers. ")
-	podcast_thread.start()
-	commands_thread.start()
+	try: 
+		podcast_thread.start()
+		commands_thread.start()
 
-	podcast_thread.join()
-	commands_thread.join()
+		podcast_thread.join()
+		commands_thread.join()
+		while True:
+			time.sleep(1)
 
-	root_log.info("Terminating Program.")
+	except (KeyboardInterrupt, SystemExit):
+		root_log.info("'\n! Received keyboard interrupt, quitting threads.\n'")
 	
 
-def new_podcast(reddit_dev):
-	'''This function's main purpose is check every x minutes to see 
-		if a new podcast is available to be posted to Reddit.
 
-		It'll grab the latest podcast data and if the datetime doesn't
-		matches the last known podcast date then it'll make a new
-		post!
-	'''	
-	new_podcast_log = logging.getLogger('SDBotcast.Poster')
-	config = load_json("config.json")
-
-	while True:
-		try: 
-			# Get data of latest podcast, and format date to datetime.
-			cast = feedparser.parse(config['rss_feed']).entries[0]
-			episode_data = {k: cast[k] for k in ('id','title', 'published','link','itunes_duration','summary')}
-			episode_data['published'] = datetime.datetime.strptime(episode_data['published'],'%a, %d %b %Y %H:%M:%S %z')
-
-
-			if config['last_cast_dt'] == str(episode_data['published']):
-				new_podcast_log.info("RSS Reviewed: No new podcast available.")
-			else:   
-				post_title = f"The Steve Dangle Podcast - {episode_data['title']}"
-
-				it_link = "https://itunes.apple.com/ca/podcast/steve-dangle-podcast/id669828195?mt=2"
-				yt_link = re.search("https://youtu\.be/.{11}", episode_data['summary']).group()		 	 # YT vid id is 11 chars
-				selftext =  textwrap.dedent(f"""\
-								New SteveDangle Podcast!
-								
-								Title: {episode_data['title']}
-
-								Duration: {episode_data['itunes_duration']}
-								
-								[SoundCloud]({episode_data['link']})
-								
-								[Itunes]({it_link})
-								
-								[Youtube]({yt_link})
-
-								To submit a favourite SDP moment, comment: SDBotcast! Favourite (timetamp in HH:MM:SS format)""")
-				
-				# post the podcast to reddit & save to config.
-				podcastpost = reddit_user.subreddit("SteveDangle").submit(post_title, selftext = selftext)
-				podcastpost.mod.sticky()
-				podcastpost.mod.suggested_sort(sort='new')
-
-				config['last_cast_dt'] = str(episode_data['published'])
-				dump_json("config.json",config)
-
-				time.sleep(36*60*60)  # Podcasts never < 48 hours apart
-			
-			# Go to sleep for a set time depending on time of day.
-			time.sleep(calculate_sleeptime(config['sleep_Interval']))
-		except Exception as e:
-			new_podcast_log.error(f"RSS reading error. Error: {e}")
-			time.sleep(900)
-			continue
-
-def new_commands(reddit_user):
-	'''Searches each comment for every command string, and calls all 
-		helper function based on the index of the regular expression(s)
-		which was successful.
-
-	'''
-	comment_log = logging.getLogger('SDBotcast.Commands')
-	COMMAND_STRINGS = {
-		"Favourite" :	"(SDBotcast! Favourite|Favorite|favourite|favorite) (\d\d:\d\d:\d\d|\d:\d\d:\d\d)",
-		"Hotdog" 	:	"(?:^|(?<=[.?!])) ?(?:IS|Is|is) ?a? ([a-zA-Z]{3,16}) ?a? ([a-zA-Z]{3,16})\?",
-		"SoftMotherfucker" : "(?i)@ ?soft ?mother ?fucker"
-	}
-
-	for comment in reddit_user.subreddit('SteveDangle').stream.comments(skip_existing=False):
-		comment_log.info(f"New Comment: {comment.body[:50]}...") 
-		for command in COMMAND_STRINGS:		
-			regex = re.search(command,comment.body)
-
-			if regex is not None:
-				if (regex.re.pattern == COMMAND_STRINGS["Favourite"]):
-					reply_text = BOT_Submit_Favourite(comment,regex)	 
-				elif (regex.re.pattern == COMMAND_STRINGS["Hotdog"]):
-					reply_text = BOT_Is_A_Hotdog_A_Sandwhich()
-				elif (regex.re.pattern == COMMAND_STRINGS['SoftMotherfucker']):
-					reply_text = "Don't be an @SoftMotherFucker!"
-				#elif (regex.re.pattern == COMMAND_STRINGS['']):
-				#elif (regex.re.pattern == COMMAND_STRINGS['']):
-				comment_log.info("Command processed.")
-				comment_log.debug(f"Command Processed. \n\nCommand: {command}. Comment: {comment}")
-				comment.reply(reply_text)
 
 
 if __name__ == '__main__':
