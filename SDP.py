@@ -1,75 +1,15 @@
 # Import Modules
 import re, datetime, time #standard modules
 import random
-import textwrap	 # standard module for removing trailing idnents in post string
-import json		 # https://docs.python.org/3/library/json.html
-import logging		 # https://docs.python.org/3/library/logging.html
-import threading	 # https://docs.python.org/3/library/threading.html
+import textwrap	 		# standard module for removing trailing idnents in post string
+import json		 		# https://docs.python.org/3/library/json.html
+import logging			# https://docs.python.org/3/library/logging.html
+import threading		# https://docs.python.org/3/library/threading.html
 
-import feedparser  # rss parser: https://pythonhosted.org/feedparser/
-import praw #reddit api wrapper: https://praw.readthedocs.io/en/latest/
+import feedparser  	# rss parser: https://pythonhosted.org/feedparser/
+import praw 		# reddit api wrapper: https://praw.readthedocs.io/en/latest/
 
 
-class User:
-	'''This is a base user class to store user keys. 
-		The more social media platforms that are used, 
-		the more worthwhile this class becomes. 
-	'''							 
-	def __init__(self, platform, *args):
-		self.platform = platform
-
-		# Declaration of secrets, tokens, passwords, etc.
-		if args is not None:
-			for key, val in args[0].items() :				 
-				setattr(self, key, val)
-class Reddit_User(User):  
-	'''This class is used to create an easy means of creating helper
-		functions for the PRAW wrapper while maintaining structre.
-
-		Additionally, the R_User/R_Mod specifications makes it 
-		easy to remember what kind of commands a particular user
-		should have available at their disposal. 
-	'''
-
-	# Pass the reddit API keys (name & password needed for posting)
-	def __init__(self, reddit_keys):
-		super().__init__('Reddit', reddit_keys)
-		if all(hasattr(self, arg) for arg in ["username","password"]):  
-			self.ReadOnly = False
-		else: self.ReadOnly = True
-
-	# Establish a link to reddit through PRAW and return that connection
-	def establish_api_connection(self):			
-		self.reddit = praw.Reddit(
-			client_id=self.client_id, 
-			client_secret=self.client_secret,
-			user_agent=self.user_agent, 
-			username=self.username, 
-			password=self.password)
-		return self.reddit
-
-	# creates a new reddit post based on provided Kwargs.
-	# kwargs - https://praw.readthedocs.io/en/latest/code_overview/models/subreddit.html?highlight=submit#praw.models.Subreddit.submit
-	def create_post(self,subreddit, title, **kwargs):
-		self.thread = self.reddit.subreddit(subreddit).submit(title, **kwargs)
-		return self.thread
-class Reddit_Mod(Reddit_User):
-	'''Similar to Reddit_User, this class is a subclass meant to make
-		available function calls more easy to remember and complete.
-		I.E. Only Reddit_mods can sticky posts and comments
-	'''
-
-	# Passes the reddit API keys, and inheret the Reddit_User Functions. 
-	def __init__(self, reddit_keys):
-		super().__init__(reddit_keys)
-
-	# Calls create_post and then sorts/stickies accordingly. 
-	def create_sticky_post(self, subreddit, title, 
-						   sticky=True, sort='blank',**kwargs):
-		self.thread = self.create_post(subreddit, title, **kwargs)
-		self.thread.mod.sticky(state=sticky,bottom=False)
-		self.thread.mod.suggested_sort(sort=sort)
-		return self.thread
 
 ### Helper Functions
 def print_textfile(file):	  # Prints a given textfile to the output.
@@ -117,9 +57,6 @@ def BOT_Submit_Favourite(comment, regex):
 		a favourites.json file for later observation.
 
 	'''
-
-	comment_log = logging.getLogger('SDPBOT.Com-Search')
-
 	# Grab the SoundCloud link and Duration from post text. 
 	# group() & group(1) is full match, group(20)
 	post_text = comment.submission.selftext
@@ -167,98 +104,65 @@ def configure_logging():
 		will have their logs piped into the logfile.This is important
 		as it means you can see PRAW timeouts, max retries,etc.
 	'''
-
-	# creates file/console handlers. file should be always set to DEBUG.
-	file_handler = logging.FileHandler('logfile.log',mode='w')
+	file_handler = logging.FileHandler('logfile.log', encoding= 'utf-8', mode='w')
 	file_handler.setLevel(logging.DEBUG)
-	file_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)40s - %(levelname)8s - %(message)s'))
 	console_handler = logging.StreamHandler()
 	console_handler.setLevel(logging.INFO)
+	console_handler.setFormatter(logging.Formatter(fmt='%(asctime)s | %(name)-16.16s | %(levelname)-4s | %(message)-72s'))	
 
 	# Configure logging using the handlers. 
-	# WARNING: Level acts as an overall level filter over handlers 
 	logging.basicConfig(
 		handlers=[file_handler,console_handler],
 		level = logging.DEBUG,
-		format='%(asctime)s - %(name)17s  - %(levelname)8s - %(message)s',
+		format='%(asctime)s | %(name)-32.32s | %(levelname)-8.8s | %(message)s',
 		datefmt = '%Y-%m-%d %H:%M:%S'
 		)
-	
-	return
-	
-def get_podcast_data(rss_feed):		 
-	'''Uses the feedparser module to parse the SDP RSS feed. 
-		This function retrieves the latest podcast data dictionary,
-		and returns a subset of it. Also parses the publish time to 
-		standard form. 
+
+	# Setting logging level for particularly Verbose loggers.	
+	logging.getLogger("prawcore").setLevel(logging.ERROR)	
+
+
+def main():
+	''' The main purpose of the script is to execute a growing number of automated tasks for /r/SteveDangle
+			- Automaticially post Steve Dangle Podcast Episodes
+			- Monitor user comments for favourite submissions & other commands
+			- Future: Post SteveDangle videos
 	'''
-
-	cast = feedparser.parse(rss_feed).entries[0]
-	episode_data = {k: cast[k] for k in (
-		'id','title', 'published','link','itunes_duration','summary')}
-	episode_data['published'] = datetime.datetime.strptime(
-		episode_data['published'],'%a, %d %b %Y %H:%M:%S %z')
-
-
-	function_log = logging.getLogger('SDPBOT.GET_Cast')
-	function_log.debug(f"Log retrieved: {episode_data}")
-
-	return episode_data
-
-
-def init():
-	'''This initilaization function just takes care of some of the 
-		necessary items to run the bot. 
-		- Print the ever important Ascii Art
-		- configure the logger for debugging & notices
-		- load keys and connect to reddit.
-	'''
-
-	print_textfile("AsciiIntro.txt")	 # C'est très important. 
+	# Configure logger, reddit conection
 	configure_logging()
+	root_log = logging.getLogger('SDBotcast.Root')
 
-	init_log = logging.getLogger('SDPBOT.Initialize')
-	init_log.info("SDPBOT loading.")
+	reddit_keys = load_json("keys.json")['reddit_keys'] 
+	SDBotcast_reddit = praw.Reddit(	client_id		= reddit_keys['client_id'], 
+									client_secret 	= reddit_keys['client_secret'], 
+									user_agent		= reddit_keys['user_agent'], 
+									username		= reddit_keys['username'], 
+									password		= reddit_keys['password'])
 
-	# Load Reddit API keys.
-	keys = load_json('keys.json')
-	reddit_keys = keys['reddit_keys'] 
-	init_log.info("Reddit's API keys have been retrived.")
 
-	# Creating Instance of Reddit Users
-	try:
-		reddit_user = Reddit_Mod(reddit_keys)
-		reddit_connect = reddit_user.establish_api_connection()
-		init_log.info("Connected to Reddit")
-	except Exception as e:
-		init_log.critical(f"Can't connect to Reddit, exiting program. Error: {e}")
-		exit()
-
-	# Excecute the main program loop.
-	init_log.info("Loading complete. Continuing to main program.")
-	main(reddit_user, reddit_connect)
-
-def main(reddit_user, reddit_connect):
-	'''This is the main thread where the threads for the different
-		main bot actions are created and started.
-	'''
-	root_log = logging.getLogger('SDPBOT')
+	with open('AsciiIntro.txt', 'r',encoding="utf8") as f:
+		root_log.info(f.read())
 	
 	# Assigning threads for main bot functions
 	podcast_thread = threading.Thread(
 		target = new_podcast,
-		args = (reddit_user, reddit_connect))  
+		args = (SDBotcast_reddit,))  
 	commands_thread = threading.Thread(
 		target = new_commands,
-		args = (reddit_user, reddit_connect)) 
+		args = (SDBotcast_reddit,)) 
 
 	# Starting  threads
 	root_log.info("Starting threads for podcast and command searchers. ")
 	podcast_thread.start()
 	commands_thread.start()
+
+	podcast_thread.join()
+	commands_thread.join()
+
+	root_log.info("Terminating Program.")
 	
 
-def new_podcast(reddit_dev, reddit_connect):
+def new_podcast(reddit_dev):
 	'''This function's main purpose is check every x minutes to see 
 		if a new podcast is available to be posted to Reddit.
 
@@ -266,29 +170,22 @@ def new_podcast(reddit_dev, reddit_connect):
 		matches the last known podcast date then it'll make a new
 		post!
 	'''	
-
-	new_podcast_log = logging.getLogger('SDPBOT.SDP-Poster')
+	new_podcast_log = logging.getLogger('SDBotcast.Poster')
 	config = load_json("config.json")
 
 	while True:
 		try: 
 			# Get data of latest podcast, and compare the date.
-			new_podcast_data = get_podcast_data(config['rss_feed'])
+			cast = feedparser.parse(config['rss_feed']).entries[0]
+			new_podcast_data = {k: cast[k] for k in ('id','title', 'published','link','itunes_duration','summary')}
+			new_podcast_data['published'] = datetime.datetime.strptime(new_podcast_data['published'],'%a, %d %b %Y %H:%M:%S %z')
 			if config['last_cast_dt'] == str(new_podcast_data['published']):
 				new_podcast_log.info("RSS Reviewed: No new podcast available.")
 			else:   
-				# doesn't work in fuctions
-				# for key, val in new_podcast_data.items() :	 
-				#	 exec("%s = %s" % (key, val))
+				post_title = f"The Steve Dangle Podcast - {new_podcast_data['title']}"
 
-				# Get the youtube link from podcast data.
 				it_link = "https://itunes.apple.com/ca/podcast/steve-dangle-podcast/id669828195?mt=2"
-				yt_link = re.search(
-					"https://youtu\.be/.{11}",  # YT vid id is 11 chars
-					new_podcast_data['summary']).group()		  
-				
-
-				# Build the selftext & title, and POST IT!
+				yt_link = re.search("https://youtu\.be/.{11}", new_podcast_data['summary']).group()		 	 # YT vid id is 11 chars
 				selftext =  textwrap.dedent(f"""\
 								New SteveDangle Podcast!
 								
@@ -303,15 +200,11 @@ def new_podcast(reddit_dev, reddit_connect):
 								[Youtube]({yt_link})
 
 								To submit a favourite SDP moment, comment: SDBotcast! Favourite (timetamp in HH:MM:SS format)""")
-				title = f"The Steve Dangle Podcast - {new_podcast_data['title']}"
-				podcastpost = reddit_dev.create_sticky_post("SteveDangle",title, True, "new",selftext=selftext)
-				new_podcast_log.info(
-					f"New podcast posted! {title}. Sleeping for 36 hours.")
-
-
-				# Update last podcast date in config. 
-				#   This is after the post to ensure it'll only get
-				#   update on a successful post. 
+				
+				# post the podcast to reddit & save to config.
+				podcastpost = reddit_user.subreddit("SteveDangle").submit(post_title, selftext = selftext)
+				podcastpost.mod.sticky()
+				podcastpost.mod.suggested_sort(sort='new')
 
 				config['last_cast_dt'] = str(new_podcast_data['published'])
 				dump_json("config.json",config)
@@ -324,42 +217,41 @@ def new_podcast(reddit_dev, reddit_connect):
 			new_podcast_log.error(f"RSS reading error. Error: {e}")
 			time.sleep(900)
 			continue
-def new_commands(reddit_user, reddit_connect):
+
+def new_commands(reddit_user):
 	'''Searches each comment for every command string, and calls all 
 		helper function based on the index of the regular expression(s)
 		which was successful.
 
 	'''
-	comment_log = logging.getLogger('SDPBOT.Com-Search')
-	command_strings = [
-		"(SDBotcast! Favourite|Favorite|favourite|favorite) (\d\d:\d\d:\d\d|\d:\d\d:\d\d)",
-		"(?:^|(?<=[.?!])) ?(?:IS|Is|is) ?a? ([a-zA-Z]{3,16}) ?a? ([a-zA-Z]{3,16})\?"
-	]
+	comment_log = logging.getLogger('SDBotcast.Commands')
+	COMMAND_STRINGS = {
+		"Favourite" :	"(SDBotcast! Favourite|Favorite|favourite|favorite) (\d\d:\d\d:\d\d|\d:\d\d:\d\d)",
+		"Hotdog" 	:	"(?:^|(?<=[.?!])) ?(?:IS|Is|is) ?a? ([a-zA-Z]{3,16}) ?a? ([a-zA-Z]{3,16})\?",
+		"SoftMotherfucker" : "(?i)@ ?soft ?mother ?fucker"
+	}
 
-	while True:
-		try:
-			for comment in reddit_connect.subreddit('SteveDangle').stream.comments(skip_existing=True):
-				comment_log.debug(comment.body)
-				for command in command_strings:		
-					regex = re.search(command,comment.body)
-					if regex is not None:
-						command_text = regex.group()
-						if (regex.re.pattern == command_strings[0]):
-							reply_text = BOT_Submit_Favourite(comment,regex)	 
-						elif (regex.re.pattern == command_strings[1]):
-							reply_text = BOT_Is_A_Hotdog_A_Sandwhich()
-						#elif (regex.re.pattern == command_strings[2]):
-						#elif (regex.re.pattern == command_strings[3]):
-						#elif (regex.re.pattern == command_strings[4]):
-						#elif (regex.re.pattern == command_strings[5]):
-						#elif (regex.re.pattern == command_strings[6]):
-						#elif (regex.re.pattern == command_strings[7]):
-						comment_log.info("Command processed.")
-						comment_log.debug(f"Command Processed. \n\nCommand: {command}. Comment: {comment}")
-						comment.reply(reply_text)
-		except Exception as e:
-			comment_log.critical(f"Assumed complete disconnect from internet. Trying to reconnect. Error {e}")
-			reddit_user.establish_api_connection()
+	for comment in reddit_user.subreddit('SteveDangle').stream.comments(skip_existing=True):
+		comment_log.debug(comment.body) 
+		for command in COMMAND_STRINGS:		
+			regex = re.search(command,comment.body)
+
+			if regex is not None:
+				if (regex.re.pattern == COMMAND_STRINGS["Favourite"]):
+					reply_text = BOT_Submit_Favourite(comment,regex)	 
+				elif (regex.re.pattern == COMMAND_STRINGS["Hotdog"]):
+					reply_text = BOT_Is_A_Hotdog_A_Sandwhich()
+				elif (regex.re.pattern == COMMAND_STRINGS['SoftMotherfucker']):
+					reply_text = "Don't be an @SoftMotherFucker!"
+				#elif (regex.re.pattern == COMMAND_STRINGS['']):
+				#elif (regex.re.pattern == COMMAND_STRINGS['']):
+				#elif (regex.re.pattern == COMMAND_STRINGS['']):
+				#elif (regex.re.pattern == COMMAND_STRINGS['']):
+				#elif (regex.re.pattern == COMMAND_STRINGS['']):
+				comment_log.info("Command processed.")
+				comment_log.debug(f"Command Processed. \n\nCommand: {command}. Comment: {comment}")
+				comment.reply(reply_text)
+
 
 if __name__ == '__main__':
-	init()
+	main()
