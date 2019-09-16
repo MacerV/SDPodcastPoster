@@ -12,10 +12,6 @@ import praw 		# reddit api wrapper: https://praw.readthedocs.io/en/latest/
 
 
 ### Helper Functions
-def print_textfile(file):	  # Prints a given textfile to the output.
-	with open('AsciiIntro.txt', 'r',encoding="utf8") as f:
-		file_contents = f.read()
-		print (file_contents)
 def load_json(file):		   # Return the raw json string from file
 	with open(file, 'r') as f:
 		raw_json = json.load(f)
@@ -23,27 +19,18 @@ def load_json(file):		   # Return the raw json string from file
 def dump_json(file,data):		   # Dump raw json string to json file
 	with open(file, "w") as file_Object:
 		json.dump(data, file_Object, indent = 4)
-def calculate_sleeptime(sleep_Interval):
-	'''This function is meant to allow for the podcast search function
-		to sleep longer during hours when posting never happens. 
-
-		Later if I'm really bored I'll convert this into a Kernal
-		Density Estimate based calculation to teach it to myself
-			- Calculate KDE
-			- Take current time
-			- Find time t where probability of posting is X.
-
-		For now this is simply assigning a rough time multipler 
-		based off of a histogram of the posting times. 
+def calculate_sleeptime(sleep_Interval, tm = 1):
+	''' This function provides a sleep time based on the current hour.  
+		Historicially less probably posting times have larger sleep intervals. 
+		
+		Future Feature: Kernal Density Estimation based calculation.
 	'''
-
-	tm = 1
 	ch = datetime.datetime.now().hour
-	if (ch == 23):			 tm = 1  #  11 PM			- 5   min
-	elif(ch==0 or ch >= 22):   tm = 2  # 0-1 AM, 10-11PM   - 10  min
-	elif(ch <= 2 or ch >= 20): tm = 3  # 1-2 AM, 8-10PM	- 15  min
-	elif(ch >= 17 or ch <4):   tm = 6  # 2-4 AM, 5-8PM	 - 30  min
-	else:					  tm = 24 # Off-Peak hours	- 120 min
+	if (ch == 23):			   tm = 1  #  11 PM				- 5   min
+	elif(ch==0 or ch >= 22):   tm = 2  # 0-1 AM, 10-11PM  	- 10  min
+	elif(ch <= 2 or ch >= 20): tm = 3  # 1-2 AM, 8-10PM		- 15  min
+	elif(ch >= 17 or ch <4):   tm = 6  # 2-4 AM, 5-8PM	 	- 30  min
+	else:					   tm = 24 # Off-Peak hours		- 120 min
 	return tm*sleep_Interval
 
 ### Bot Helper Procedures/Functions
@@ -61,16 +48,13 @@ def BOT_Submit_Favourite(comment, regex):
 	# group() & group(1) is full match, group(20)
 	post_text = comment.submission.selftext
 	SC_Link =  re.search("\[SoundCloud\]\((.+)\)",post_text).group(1)	
-	duration = datetime.datetime.strptime(
-		re.search("Duration: (\d\d:\d\d:\d\d)", post_text).group(1),
-		"%H:%M:%S")
+	duration = datetime.datetime.strptime(re.search("Duration: (\d\d:\d\d:\d\d)", post_text).group(1),"%H:%M:%S")
 	reply_text = ""
 
 	try:
 		# Try and parse timestamp and push data to favourites.json		 
 		timestamp = datetime.datetime.strptime(regex.group(2),"%H:%M:%S")
 		if (timestamp > duration):
-			comment_log.warning("Invalid timestamp provided.")
 			reply_text("Timestamp exceeds podcast duration, try again.")
 		else:
 			favourite_submission = { 
@@ -78,16 +62,17 @@ def BOT_Submit_Favourite(comment, regex):
 				"posting_time" : comment.created_utc,
 				"comment_id" : comment.id,
 				"comment_body" : comment.body,
-				"link": f"{SC_Link}#{regex.group(2)}"}
+				"link": f"{SC_Link}#{regex.group(2)}"
+			}
 			favourites_log = load_json('favourites.json')
 			favourites_log["Favourite Comments"].append(favourite_submission)
 			dump_json('favourites.json',favourites_log)
 			
 			reply_text = f"Adding [SoundCloudLink]({SC_Link}) to the pile of favourites."
 	except Exception as e: 
-		comment_log.warning(f"Exception from timetamp parsing: {e}")
-		reply_text = "Unable to parse timestamp. Confirm timestamp is available in podcast post, and that timestamp provided is in the 00:00:00 format."
+		reply_text = f"Exception while parsing timestamp {e}."
 	return reply_text
+
 def BOT_Is_A_Hotdog_A_Sandwhich():
 	hotdogs = [
 				"a hotdog a sandwhich","cereal soup", "ketchup a jam", 
@@ -98,11 +83,9 @@ def BOT_Is_A_Hotdog_A_Sandwhich():
 	return reply_text
 
 def configure_logging():
-	'''Configure the logging module. 
-
-		BasicConfig is used to ensure that imports that use logging
-		will have their logs piped into the logfile.This is important
-		as it means you can see PRAW timeouts, max retries,etc.
+	''' A straight forward logging configuration: 
+			Console: INFO and up notifcations, with truncated messages. 
+			File   : Complete debug information.
 	'''
 	file_handler = logging.FileHandler('logfile.log', encoding= 'utf-8', mode='w')
 	file_handler.setLevel(logging.DEBUG)
@@ -119,7 +102,7 @@ def configure_logging():
 		)
 
 	# Setting logging level for particularly Verbose loggers.	
-	logging.getLogger("prawcore").setLevel(logging.ERROR)	
+	# logging.getLogger("prawcore").setLevel(logging.ERROR)	
 
 
 def main():
@@ -175,25 +158,27 @@ def new_podcast(reddit_dev):
 
 	while True:
 		try: 
-			# Get data of latest podcast, and compare the date.
+			# Get data of latest podcast, and format date to datetime.
 			cast = feedparser.parse(config['rss_feed']).entries[0]
-			new_podcast_data = {k: cast[k] for k in ('id','title', 'published','link','itunes_duration','summary')}
-			new_podcast_data['published'] = datetime.datetime.strptime(new_podcast_data['published'],'%a, %d %b %Y %H:%M:%S %z')
-			if config['last_cast_dt'] == str(new_podcast_data['published']):
+			episode_data = {k: cast[k] for k in ('id','title', 'published','link','itunes_duration','summary')}
+			episode_data['published'] = datetime.datetime.strptime(episode_data['published'],'%a, %d %b %Y %H:%M:%S %z')
+
+
+			if config['last_cast_dt'] == str(episode_data['published']):
 				new_podcast_log.info("RSS Reviewed: No new podcast available.")
 			else:   
-				post_title = f"The Steve Dangle Podcast - {new_podcast_data['title']}"
+				post_title = f"The Steve Dangle Podcast - {episode_data['title']}"
 
 				it_link = "https://itunes.apple.com/ca/podcast/steve-dangle-podcast/id669828195?mt=2"
-				yt_link = re.search("https://youtu\.be/.{11}", new_podcast_data['summary']).group()		 	 # YT vid id is 11 chars
+				yt_link = re.search("https://youtu\.be/.{11}", episode_data['summary']).group()		 	 # YT vid id is 11 chars
 				selftext =  textwrap.dedent(f"""\
 								New SteveDangle Podcast!
 								
-								Title: {new_podcast_data['title']}
+								Title: {episode_data['title']}
 
-								Duration: {new_podcast_data['itunes_duration']}
+								Duration: {episode_data['itunes_duration']}
 								
-								[SoundCloud]({new_podcast_data['link']})
+								[SoundCloud]({episode_data['link']})
 								
 								[Itunes]({it_link})
 								
@@ -206,7 +191,7 @@ def new_podcast(reddit_dev):
 				podcastpost.mod.sticky()
 				podcastpost.mod.suggested_sort(sort='new')
 
-				config['last_cast_dt'] = str(new_podcast_data['published'])
+				config['last_cast_dt'] = str(episode_data['published'])
 				dump_json("config.json",config)
 
 				time.sleep(36*60*60)  # Podcasts never < 48 hours apart
@@ -231,8 +216,8 @@ def new_commands(reddit_user):
 		"SoftMotherfucker" : "(?i)@ ?soft ?mother ?fucker"
 	}
 
-	for comment in reddit_user.subreddit('SteveDangle').stream.comments(skip_existing=True):
-		comment_log.debug(comment.body) 
+	for comment in reddit_user.subreddit('SteveDangle').stream.comments(skip_existing=False):
+		comment_log.info(f"New Comment: {comment.body[:50]}...") 
 		for command in COMMAND_STRINGS:		
 			regex = re.search(command,comment.body)
 
@@ -243,9 +228,6 @@ def new_commands(reddit_user):
 					reply_text = BOT_Is_A_Hotdog_A_Sandwhich()
 				elif (regex.re.pattern == COMMAND_STRINGS['SoftMotherfucker']):
 					reply_text = "Don't be an @SoftMotherFucker!"
-				#elif (regex.re.pattern == COMMAND_STRINGS['']):
-				#elif (regex.re.pattern == COMMAND_STRINGS['']):
-				#elif (regex.re.pattern == COMMAND_STRINGS['']):
 				#elif (regex.re.pattern == COMMAND_STRINGS['']):
 				#elif (regex.re.pattern == COMMAND_STRINGS['']):
 				comment_log.info("Command processed.")
