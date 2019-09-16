@@ -246,18 +246,12 @@ def main():
  
 	# Starting  threads
 	root_log.info("Starting threads for podcast and command searchers. ")
-	try: 
-		podcast_thread.start()
-		commands_thread.start()
-
-		podcast_thread.join()
-		commands_thread.join()
-		while True:
-			time.sleep(1)
-
-	except (KeyboardInterrupt, SystemExit):
-		root_log.info("'\n! Received keyboard interrupt, quitting threads.\n'")
 	
+	podcast_thread.start()
+	commands_thread.start()
+
+	podcast_thread.join()
+	commands_thread.join()
 
 
 
