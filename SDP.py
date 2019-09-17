@@ -1,5 +1,5 @@
 # Import Modules
-import re, datetime, time #standard modules
+import re, datetime, time, os #standard modules
 import random
 import textwrap	 		# standard module for removing trailing idnents in post string
 import json		 		# https://docs.python.org/3/library/json.html
@@ -8,14 +8,14 @@ import threading		# https://docs.python.org/3/library/threading.html
 
 import feedparser  	# rss parser: https://pythonhosted.org/feedparser/
 import praw 		# reddit api wrapper: https://praw.readthedocs.io/en/latest/
+import apiclient 	# google's API 
 
 
 
 ### Helper Functions
 def load_json(file):		   # Return the raw json string from file
 	with open(file, 'r') as f:
-		raw_json = json.load(f)
-	return raw_json
+		return json.load(f)
 def dump_json(file,data):		   # Dump raw json string to json file
 	with open(file, "w") as file_Object:
 		json.dump(data, file_Object, indent = 4)
@@ -26,42 +26,47 @@ class bot_commands(threading.Thread):
 		which was successful.
 
 	'''
+	COMMAND_STRINGS = {
+		"Favourite" :	"(SDBotcast! Favourite|Favorite|favourite|favorite) (\d\d:\d\d:\d\d|\d:\d\d:\d\d)",
+		"Hotdog" 	:	"(?:^|(?<=[.?!])) ?(?:IS|Is|is) ?a? ([a-zA-Z]{3,16}) ?a? ([a-zA-Z]{3,16})\?",
+		"SoftMotherfucker" : "(?i)@ ?soft ?mother ?fucker"
+	}
+	comment_log = logging.getLogger('SDBotcast.Commands')
+	reddit_keys = load_json("keys.json")['reddit_keys'] 
+	reddit_user = praw.Reddit(		client_id		= self.reddit_keys['client_id'], 
+									client_secret 	= self.reddit_keys['client_secret'], 
+									user_agent		= self.reddit_keys['user_agent'], 
+									username		= self.reddit_keys['username'], 
+									password		= self.reddit_keys['password'])
 
 	
-	def __init__(self, reddit_user):
+	def __init__(self):
 		super(bot_commands, self).__init__()
-		self.reddit_user = reddit_user
-		self.COMMAND_STRINGS = {
-			"Favourite" :	"(SDBotcast! Favourite|Favorite|favourite|favorite) (\d\d:\d\d:\d\d|\d:\d\d:\d\d)",
-			"Hotdog" 	:	"(?:^|(?<=[.?!])) ?(?:IS|Is|is) ?a? ([a-zA-Z]{3,16}) ?a? ([a-zA-Z]{3,16})\?",
-			"SoftMotherfucker" : "(?i)@ ?soft ?mother ?fucker"
-		}
-		self.comment_log = logging.getLogger('SDBotcast.Commands')
-
-		
+		self.shutdown_flag = threading.Event()
 		self.comment_log.info("Comment command searching thread started")
 
 	def run(self):
-        # while not self.shutdown_flag.is_set():
+		while not self.shutdown_flag.is_set():
+			for comment in self.reddit_user.subreddit('SteveDangle').stream.comments(skip_existing=False):
+				self.comment_log.debug(f"New Comment: {comment.body[:50]}...") 
+				for command in self.COMMAND_STRINGS:		
+					regex = re.search(command,comment.body)
 
+					if regex is not None:
+						if (regex.re.pattern == COMMAND_STRINGS["Favourite"]):
+							reply_text = __BOT_Submit_Favourite(comment,regex)	 
+						elif (regex.re.pattern == COMMAND_STRINGS["Hotdog"]):
+							reply_text = __BOT_Is_A_Hotdog_A_Sandwhich()
+						elif (regex.re.pattern == COMMAND_STRINGS['SoftMotherfucker']):
+							reply_text = "Don't be an @SoftMotherFucker!"
+						#elif (regex.re.pattern == COMMAND_STRINGS['']):
+						#elif (regex.re.pattern == COMMAND_STRINGS['']):
+						self.comment_log.info("Reply Text prepared: {reply_text}")
+						self.comment_log.debug(f"Command Processed. \n\nCommand: {command}. Comment: {comment}")
+						comment.reply(reply_text)
+			self.comment_log.error("Praw comment stream exited, rebooting in 5 minutes.")
+			time.sleep(300)	 	# sleeping 5 minutes to hopefully allow the connection to reboot or whatever error to solve itself
 
-		for comment in self.reddit_user.subreddit('SteveDangle').stream.comments(skip_existing=False):
-			self.comment_log.debug(f"New Comment: {comment.body[:50]}...") 
-			for command in self.COMMAND_STRINGS:		
-				regex = re.search(command,comment.body)
-
-				if regex is not None:
-					if (regex.re.pattern == COMMAND_STRINGS["Favourite"]):
-						reply_text = __BOT_Submit_Favourite(comment,regex)	 
-					elif (regex.re.pattern == COMMAND_STRINGS["Hotdog"]):
-						reply_text = __BOT_Is_A_Hotdog_A_Sandwhich()
-					elif (regex.re.pattern == COMMAND_STRINGS['SoftMotherfucker']):
-						reply_text = "Don't be an @SoftMotherFucker!"
-					#elif (regex.re.pattern == COMMAND_STRINGS['']):
-					#elif (regex.re.pattern == COMMAND_STRINGS['']):
-					self.comment_log.info("Reply Text prepared: {reply_text}")
-					self.comment_log.debug(f"Command Processed. \n\nCommand: {command}. Comment: {comment}")
-					comment.reply(reply_text)
 
 	def __BOT_Submit_Favourite(self, comment, regex):
 		'''Favourite submissions are submitted by users of /r/SteveDangle.
@@ -119,19 +124,25 @@ class bot_podcasts(threading.Thread):
 		matches the last known podcast date then it'll make a new
 		post!
 	'''	
+	podcast_log = logging.getLogger('SDBotcast.Poster')
+	config = load_json("config.json")
+	reddit_keys = load_json("keys.json")['reddit_keys'] 
+	reddit_dev = praw.Reddit(	client_id		= self.reddit_keys['client_id'], 
+								client_secret 	= self.reddit_keys['client_secret'], 
+								user_agent		= self.reddit_keys['user_agent'], 
+								username		= self.reddit_keys['username'], 
+								password		= self.reddit_keys['password'])
 
 
-	def __init__(self, reddit_dev):
+	def __init__(self):
 		super(bot_podcasts, self).__init__()
-		self.reddit_dev = reddit_dev
-		self.podcast_log = logging.getLogger('SDBotcast.Poster')
-		self.config = load_json("config.json")
+		self.shutdown_flag = threading.Event()
+
 
 		self.podcast_log.info("Podcast Check thread started")
 
 	def run(self):
-
-		while True:
+		while not self.shutdown_flag.is_set():
 			try: 
 				# Get data of latest podcast, and format date to datetime.
 				cast = feedparser.parse(self.config['rss_feed']).entries[0]
@@ -163,12 +174,12 @@ class bot_podcasts(threading.Thread):
 									To submit a favourite SDP moment, comment: SDBotcast! Favourite (timetamp in HH:MM:SS format)""")
 					
 					# post the podcast to reddit & save to config.
-					podcastpost = reddit_user.subreddit("SteveDangle").submit(post_title, selftext = selftext)
+					podcastpost = reddit_dev.subreddit("SteveDangle").submit(post_title, selftext = selftext)
 					podcastpost.mod.sticky()
 					podcastpost.mod.suggested_sort(sort='new')
 
 					self.config['last_cast_dt'] = str(episode_data['published'])
-					dump_json("config.json",config)
+					dump_json("config.json",self.config)
 
 					time.sleep(36*60*60)  # Podcasts never < 48 hours apart
 				
@@ -195,6 +206,50 @@ class bot_podcasts(threading.Thread):
 		else:					   tm = 24 # Off-Peak hours		- 120 min
 		return tm*sleep_Interval
 
+class bot_youtube(threading.Thread):
+
+	youtube_log = logging.getLogger('SDBotcast.Youtube')
+	last_video_id = load_json("config.json")["last_video_id"]
+	API_KEY = load_json("keys.json")["google_keys"]["API_KEY"]
+	reddit_keys = load_json("keys.json")['reddit_keys'] 
+	reddit_user = praw.Reddit(	client_id		= self.reddit_keys['client_id'], 
+								client_secret 	= self.reddit_keys['client_secret'], 
+								user_agent		= self.reddit_keys['user_agent'], 
+								username		= self.reddit_keys['username'], 
+								password		= self.reddit_keys['password'])
+
+	def __init__(self):
+		super(bot_youtube, self).__init__()
+		self.shutdown_flag = threading.Event()
+		self.youtube_log.info("Youtube Video checker started")
+
+
+	def run(self):
+		while not self.shutdown_flag.is_set():
+			# get youtube response
+			youtube = apiclient.discovery.build('youtube', 'v3', developerKey=self.API_KEY, cache_discovery=False) 		# Their cache discovery thing is broke
+			request = youtube.playlistItems().list(part="id,contentDetails", playlistId = "UUkUjSzthJUlO0uyUpiJfnxg" )
+			response = request.execute()
+			latest_video_id = response['items'][0]['contentDetails']['videoId']
+
+			# Check if video is new.
+			if latest_video_id != self.last_video_id :
+				self.youtube_log.info(f"New Steve Dangle Video {latest_video_id}")
+				self.last_video_id = latest_video_id
+
+				# POST TO REDDIT
+
+
+			time.sleep(1800)  	# 30 minutes
+		
+		# Closing, so save the last_video_id to the config.
+		config = load_json("config.json")
+		config["last_video_id"] = latest_video_id
+		dump_json("config.json",config)
+
+
+  
+
 
 def configure_logging():
 	''' A straight forward logging configuration: 
@@ -217,6 +272,7 @@ def configure_logging():
 
 	# Setting logging level for particularly Verbose loggers.	
 	# logging.getLogger("prawcore").setLevel(logging.ERROR)	
+	logging.getLogger('googleapiclient.discovery').setLevel(logging.WARNING)
 
 
 def main():
@@ -225,35 +281,25 @@ def main():
 			- Monitor user comments for favourite submissions & other commands
 			- Future: Post SteveDangle videos
 	'''
-	# Configure logger, reddit conection
 	configure_logging()
 	root_log = logging.getLogger('SDBotcast.Root')
-
-	reddit_keys = load_json("keys.json")['reddit_keys'] 
-	SDBotcast_reddit = praw.Reddit(	client_id		= reddit_keys['client_id'], 
-									client_secret 	= reddit_keys['client_secret'], 
-									user_agent		= reddit_keys['user_agent'], 
-									username		= reddit_keys['username'], 
-									password		= reddit_keys['password'])
-
-
 	with open('AsciiIntro.txt', 'r',encoding="utf8") as f:
 		root_log.info(f.read())
 	
-	# Assigning threads for main bot functions
-	podcast_thread = bot_podcasts(SDBotcast_reddit)
-	commands_thread = bot_commands(SDBotcast_reddit)
- 
-	# Starting  threads
-	root_log.info("Starting threads for podcast and command searchers. ")
-	
+	root_log.info("Starting program threads. ")
+	podcast_thread = bot_podcasts()
+	commands_thread = bot_commands()
+	youtube_thread = bot_youtube()
+ 	
 	podcast_thread.start()
 	commands_thread.start()
+	youtube_thread.start()
 
 	podcast_thread.join()
 	commands_thread.join()
+	youtube_thread.join()
 
-
+	root_log.critical("Rughrohg, the program has stopped.")
 
 
 if __name__ == '__main__':
