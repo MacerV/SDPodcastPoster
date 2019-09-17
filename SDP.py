@@ -33,11 +33,11 @@ class bot_commands(threading.Thread):
 	}
 	comment_log = logging.getLogger('SDBotcast.Commands')
 	reddit_keys = load_json("keys.json")['reddit_keys'] 
-	reddit_user = praw.Reddit(		client_id		= self.reddit_keys['client_id'], 
-									client_secret 	= self.reddit_keys['client_secret'], 
-									user_agent		= self.reddit_keys['user_agent'], 
-									username		= self.reddit_keys['username'], 
-									password		= self.reddit_keys['password'])
+	reddit_user = praw.Reddit(		client_id		= reddit_keys['client_id'], 
+									client_secret 	= reddit_keys['client_secret'], 
+									user_agent		= reddit_keys['user_agent'], 
+									username		= reddit_keys['username'], 
+									password		= reddit_keys['password'])
 
 	
 	def __init__(self):
@@ -127,11 +127,11 @@ class bot_podcasts(threading.Thread):
 	podcast_log = logging.getLogger('SDBotcast.Poster')
 	config = load_json("config.json")
 	reddit_keys = load_json("keys.json")['reddit_keys'] 
-	reddit_dev = praw.Reddit(	client_id		= self.reddit_keys['client_id'], 
-								client_secret 	= self.reddit_keys['client_secret'], 
-								user_agent		= self.reddit_keys['user_agent'], 
-								username		= self.reddit_keys['username'], 
-								password		= self.reddit_keys['password'])
+	reddit_dev = praw.Reddit(	client_id		= reddit_keys['client_id'], 
+								client_secret 	= reddit_keys['client_secret'], 
+								user_agent		= reddit_keys['user_agent'], 
+								username		= reddit_keys['username'], 
+								password		= reddit_keys['password'])
 
 
 	def __init__(self):
@@ -212,11 +212,11 @@ class bot_youtube(threading.Thread):
 	last_video_id = load_json("config.json")["last_video_id"]
 	API_KEY = load_json("keys.json")["google_keys"]["API_KEY"]
 	reddit_keys = load_json("keys.json")['reddit_keys'] 
-	reddit_user = praw.Reddit(	client_id		= self.reddit_keys['client_id'], 
-								client_secret 	= self.reddit_keys['client_secret'], 
-								user_agent		= self.reddit_keys['user_agent'], 
-								username		= self.reddit_keys['username'], 
-								password		= self.reddit_keys['password'])
+	reddit_user = praw.Reddit(	client_id		= reddit_keys['client_id'], 
+								client_secret 	= reddit_keys['client_secret'], 
+								user_agent		= reddit_keys['user_agent'], 
+								username		= reddit_keys['username'], 
+								password		= reddit_keys['password'])
 
 	def __init__(self):
 		super(bot_youtube, self).__init__()
