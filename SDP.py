@@ -1,5 +1,5 @@
 # Import Modules
-import re, datetime, time, os #standard modules
+import re, datetime, time, os, sys 	#standard modules
 import random
 import textwrap	 		# standard module for removing trailing idnents in post string
 import json		 		# https://docs.python.org/3/library/json.html
@@ -33,7 +33,7 @@ class bot_commands(threading.Thread):
 	}
 	comment_log = logging.getLogger('SDBotcast.Commands')
 	reddit_keys = load_json("keys.json")['reddit_keys'] 
-	reddit_user = praw.Reddit(		client_id		= reddit_keys['client_id'], 
+	reddit_dev = praw.Reddit(		client_id		= reddit_keys['client_id'], 
 									client_secret 	= reddit_keys['client_secret'], 
 									user_agent		= reddit_keys['user_agent'], 
 									username		= reddit_keys['username'], 
@@ -47,7 +47,7 @@ class bot_commands(threading.Thread):
 
 	def run(self):
 		while not self.shutdown_flag.is_set():
-			for comment in self.reddit_user.subreddit('SteveDangle').stream.comments(skip_existing=False):
+			for comment in self.reddit_dev.subreddit('SteveDangle').stream.comments(skip_existing=False):
 				self.comment_log.debug(f"New Comment: {comment.body[:50]}...") 
 				for command in self.COMMAND_STRINGS:		
 					regex = re.search(command,comment.body)
@@ -174,7 +174,7 @@ class bot_podcasts(threading.Thread):
 									To submit a favourite SDP moment, comment: SDBotcast! Favourite (timetamp in HH:MM:SS format)""")
 					
 					# post the podcast to reddit & save to config.
-					podcastpost = reddit_dev.subreddit("SteveDangle").submit(post_title, selftext = selftext)
+					podcastpost = self.reddit_dev.subreddit("SteveDangle").submit(post_title, selftext = selftext)
 					podcastpost.mod.sticky()
 					podcastpost.mod.suggested_sort(sort='new')
 
@@ -212,7 +212,7 @@ class bot_youtube(threading.Thread):
 	last_video_id = load_json("config.json")["last_video_id"]
 	API_KEY = load_json("keys.json")["google_keys"]["API_KEY"]
 	reddit_keys = load_json("keys.json")['reddit_keys'] 
-	reddit_user = praw.Reddit(	client_id		= reddit_keys['client_id'], 
+	reddit_dev = praw.Reddit(	client_id		= reddit_keys['client_id'], 
 								client_secret 	= reddit_keys['client_secret'], 
 								user_agent		= reddit_keys['user_agent'], 
 								username		= reddit_keys['username'], 
@@ -227,25 +227,32 @@ class bot_youtube(threading.Thread):
 	def run(self):
 		while not self.shutdown_flag.is_set():
 			# get youtube response
-			youtube = apiclient.discovery.build('youtube', 'v3', developerKey=self.API_KEY, cache_discovery=False) 		# Their cache discovery thing is broke
+			youtube = apiclient.discovery.build('youtube', 'v3', developerKey=bot_youtube.API_KEY, cache_discovery=False) 		# Their cache discovery thing is broke
 			request = youtube.playlistItems().list(part="id,contentDetails", playlistId = "UUkUjSzthJUlO0uyUpiJfnxg" )
 			response = request.execute()
 			latest_video_id = response['items'][0]['contentDetails']['videoId']
 
 			# Check if video is new.
-			if latest_video_id != self.last_video_id :
-				self.youtube_log.info(f"New Steve Dangle Video {latest_video_id}")
-				self.last_video_id = latest_video_id
+			if latest_video_id != bot_youtube.last_video_id :
+				youtube_log.info(f"New Steve Dangle Video {latest_video_id}")
+				bot_youtube.last_video_id = latest_video_id
 
-				# POST TO REDDIT
+
+				# Get details and post to reddit.
+				LFR = youtube.videos().list(part="snippet",id=f"{latest_video_id}").execute()
+				LFR_title = f"[Steve Dangle] {LFR['items'][0]['snippet']['title']}"
+				LFR_link = f"https://www.youtube.com/watch?v={self.latest_video_i}"
+				youtube_video = self.reddit_dev.subreddit("SteveDangle").submit(LFR_title, url=LFR_link)
+
+
+				# Save the last_video_id to the config.
+				config = load_json("config.json")
+				config["last_video_id"] = latest_video_id
+				dump_json("config.json",config)
 
 
 			time.sleep(1800)  	# 30 minutes
 		
-		# Closing, so save the last_video_id to the config.
-		config = load_json("config.json")
-		config["last_video_id"] = latest_video_id
-		dump_json("config.json",config)
 
 
   
