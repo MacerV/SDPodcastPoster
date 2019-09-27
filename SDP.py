@@ -31,18 +31,19 @@ class bot_commands(threading.Thread):
 		"Hotdog" 	:	"(?:^|(?<=[.?!])) ?(?:IS|Is|is) ?a? ([a-zA-Z]{3,16}) ?a? ([a-zA-Z]{3,16})\?",
 		"SoftMotherfucker" : "(?i)@ ?soft ?mother ?fucker"
 	}
-	comment_log = logging.getLogger('SDBotcast.Commands')
-	reddit_keys = load_json("keys.json")['reddit_keys'] 
-	reddit_dev = praw.Reddit(		client_id		= reddit_keys['client_id'], 
-									client_secret 	= reddit_keys['client_secret'], 
-									user_agent		= reddit_keys['user_agent'], 
-									username		= reddit_keys['username'], 
-									password		= reddit_keys['password'])
 
 	
 	def __init__(self):
 		super(bot_commands, self).__init__()
+		self.comment_log = logging.getLogger('SDBotcast.Commands')
 		self.shutdown_flag = threading.Event()
+
+		self.reddit_keys = load_json("keys.json")['reddit_keys'] 
+		self.reddit_dev = praw.Reddit(	client_id		= self.reddit_keys['client_id'], 
+										client_secret 	= self.reddit_keys['client_secret'], 
+										user_agent		= self.reddit_keys['user_agent'], 
+										username		= self.reddit_keys['username'], 
+										password		= self.reddit_keys['password'])
 		self.comment_log.info("Comment command searching thread started")
 
 	def run(self):
@@ -124,21 +125,17 @@ class bot_podcasts(threading.Thread):
 		matches the last known podcast date then it'll make a new
 		post!
 	'''	
-	podcast_log = logging.getLogger('SDBotcast.Poster')
-	config = load_json("config.json")
-	reddit_keys = load_json("keys.json")['reddit_keys'] 
-	reddit_dev = praw.Reddit(	client_id		= reddit_keys['client_id'], 
-								client_secret 	= reddit_keys['client_secret'], 
-								user_agent		= reddit_keys['user_agent'], 
-								username		= reddit_keys['username'], 
-								password		= reddit_keys['password'])
-
-
 	def __init__(self):
 		super(bot_podcasts, self).__init__()
+		self.podcast_log = logging.getLogger('SDBotcast.Poster')
 		self.shutdown_flag = threading.Event()
-
-
+		self.config = load_json("config.json")
+		self.reddit_keys = load_json("keys.json")['reddit_keys'] 
+		self.reddit_dev = praw.Reddit(	client_id		= self.reddit_keys['client_id'], 
+										client_secret 	= self.reddit_keys['client_secret'], 
+										user_agent		= self.reddit_keys['user_agent'], 
+										username		= self.reddit_keys['username'], 
+										password		= self.reddit_keys['password'])
 		self.podcast_log.info("Podcast Check thread started")
 
 	def run(self):
@@ -207,43 +204,48 @@ class bot_podcasts(threading.Thread):
 		return tm*sleep_Interval
 
 class bot_youtube(threading.Thread):
-
-	youtube_log = logging.getLogger('SDBotcast.Youtube')
-	last_video_id = load_json("config.json")["last_video_id"]
-	API_KEY = load_json("keys.json")["google_keys"]["API_KEY"]
-	reddit_keys = load_json("keys.json")['reddit_keys'] 
-	reddit_dev = praw.Reddit(	client_id		= reddit_keys['client_id'], 
-								client_secret 	= reddit_keys['client_secret'], 
-								user_agent		= reddit_keys['user_agent'], 
-								username		= reddit_keys['username'], 
-								password		= reddit_keys['password'])
-
 	def __init__(self):
 		super(bot_youtube, self).__init__()
+		self.youtube_log = logging.getLogger('SDBotcast.Youtube')
 		self.shutdown_flag = threading.Event()
+
+		# loading keys and starting up praw connection.
+		self.last_video_id = load_json("config.json")["last_video_id"]
+		self.API_KEY = load_json("keys.json")["google_keys"]["API_KEY"]
+		self.reddit_keys = load_json("keys.json")['reddit_keys'] 
+		self.reddit_dev = praw.Reddit(	client_id		= self.reddit_keys['client_id'], 
+										client_secret 	= self.reddit_keys['client_secret'], 
+										user_agent		= self.reddit_keys['user_agent'], 
+										username		= self.reddit_keys['username'], 
+										password		= self.reddit_keys['password'])
+
 		self.youtube_log.info("Youtube Video checker started")
 
 
 	def run(self):
 		while not self.shutdown_flag.is_set():
 			# get youtube response
-			youtube = apiclient.discovery.build('youtube', 'v3', developerKey=bot_youtube.API_KEY, cache_discovery=False) 		# Their cache discovery thing is broke
+			youtube = apiclient.discovery.build('youtube', 'v3', developerKey=self.API_KEY, cache_discovery=False) 		# Their cache discovery thing is broke
 			request = youtube.playlistItems().list(part="id,contentDetails", playlistId = "UUkUjSzthJUlO0uyUpiJfnxg" )
 			response = request.execute()
 			latest_video_id = response['items'][0]['contentDetails']['videoId']
 
 			# Check if video is new.
-			if latest_video_id != bot_youtube.last_video_id :
-				youtube_log.info(f"New Steve Dangle Video {latest_video_id}")
-				bot_youtube.last_video_id = latest_video_id
+			if latest_video_id != self.last_video_id :
+				self.youtube_log.info(f"New Steve Dangle Video {latest_video_id}")
+				self.last_video_id = latest_video_id
 
 
 				# Get details and post to reddit.
 				LFR = youtube.videos().list(part="snippet",id=f"{latest_video_id}").execute()
 				LFR_title = f"[Steve Dangle] {LFR['items'][0]['snippet']['title']}"
-				LFR_link = f"https://www.youtube.com/watch?v={self.latest_video_i}"
-				youtube_video = self.reddit_dev.subreddit("SteveDangle").submit(LFR_title, url=LFR_link)
-
+				LFR_link = f"https://www.youtube.com/watch?v={self.last_video_id}"
+				LFR_post = self.reddit_dev.subreddit("SteveDangle").submit(LFR_title, url=LFR_link)
+				
+				# If there is a duplicate then just delete this post, and move on.
+				for duplicate in LFR_post.duplicates():
+					LFR_post.delete()
+					break
 
 				# Save the last_video_id to the config.
 				config = load_json("config.json")
