@@ -1,4 +1,4 @@
-
+2020-02-11 18:21:27 | SDBotcast.Root                   | INFO     | 
       
                   ███████╗██████╗ ██████╗  ██████╗ ████████╗ ██████╗ █████╗ ███████╗████████╗
                   ██╔════╝██╔══██╗██╔══██╗██╔═══██╗╚══██╔══╝██╔════╝██╔══██╗██╔════╝╚══██╔══╝
@@ -52,3 +52,24 @@
 ╚═╝  ╚═╝ ╚═════╝ ╚═╝╚═╝  ╚═══╝╚═╝╚═╝  ╚═══╝ ╚═════╝     ╚═╝     ╚═╝   ╚═╝       ╚══════╝╚═╝╚═╝     ╚══════╝
                                                                                                                   
                                                                            
+2020-02-11 18:21:27 | SDBotcast.Root                   | INFO     | Starting program threads. 
+2020-02-11 18:21:27 | SDBotcast.Poster                 | INFO     | Podcast Check thread started
+2020-02-11 18:21:27 | SDBotcast.Commands               | INFO     | Comment command searching thread started
+2020-02-11 18:21:27 | SDBotcast.Youtube                | INFO     | Youtube Video checker started
+2020-02-11 18:21:27 | prawcore                         | DEBUG    | Fetching: GET https://oauth.reddit.com/r/SteveDangle/comments/
+2020-02-11 18:21:27 | prawcore                         | DEBUG    | Data: None
+2020-02-11 18:21:27 | prawcore                         | DEBUG    | Params: {'before': None, 'limit': 100, 'raw_json': 1}
+2020-02-11 18:21:27 | SDBotcast.Poster                 | ERROR    | RSS reading error. Error: list index out of range
+2020-02-11 18:21:27 | urllib3.connectionpool           | DEBUG    | Starting new HTTPS connection (1): www.reddit.com:443
+2020-02-11 18:21:27 | prawcore                         | WARNING  | Retrying due to ConnectionError(MaxRetryError("HTTPSConnectionPool(host='www.reddit.com', port=443): Max retries exceeded with url: /api/v1/access_token (Caused by NewConnectionError('<urllib3.connection.VerifiedHTTPSConnection object at 0x07BB3AF0>: Failed to establish a new connection: [Errno 11001] getaddrinfo failed'))")) status: GET https://oauth.reddit.com/r/SteveDangle/comments/
+2020-02-11 18:21:27 | prawcore                         | DEBUG    | Sleeping: 1.49 seconds prior to retry
+2020-02-11 18:21:28 | prawcore                         | DEBUG    | Fetching: GET https://oauth.reddit.com/r/SteveDangle/comments/
+2020-02-11 18:21:28 | prawcore                         | DEBUG    | Data: None
+2020-02-11 18:21:28 | prawcore                         | DEBUG    | Params: {'before': None, 'limit': 100, 'raw_json': 1}
+2020-02-11 18:21:28 | urllib3.connectionpool           | DEBUG    | Starting new HTTPS connection (2): www.reddit.com:443
+2020-02-11 18:21:28 | prawcore                         | WARNING  | Retrying due to ConnectionError(MaxRetryError("HTTPSConnectionPool(host='www.reddit.com', port=443): Max retries exceeded with url: /api/v1/access_token (Caused by NewConnectionError('<urllib3.connection.VerifiedHTTPSConnection object at 0x07BB3A10>: Failed to establish a new connection: [Errno 11001] getaddrinfo failed'))")) status: GET https://oauth.reddit.com/r/SteveDangle/comments/
+2020-02-11 18:21:28 | prawcore                         | DEBUG    | Sleeping: 3.68 seconds prior to retry
+2020-02-11 18:21:32 | prawcore                         | DEBUG    | Fetching: GET https://oauth.reddit.com/r/SteveDangle/comments/
+2020-02-11 18:21:32 | prawcore                         | DEBUG    | Data: None
+2020-02-11 18:21:32 | prawcore                         | DEBUG    | Params: {'before': None, 'limit': 100, 'raw_json': 1}
+2020-02-11 18:21:32 | urllib3.connectionpool           | DEBUG    | Starting new HTTPS connection (3): www.reddit.com:443

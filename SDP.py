@@ -145,7 +145,7 @@ class bot_podcasts(threading.Thread):
 				cast = feedparser.parse(self.config['rss_feed']).entries[0]
 				episode_data = {k: cast[k] for k in ('id','title', 'published','link','itunes_duration','summary')}
 				episode_data['published'] = datetime.datetime.strptime(episode_data['published'],'%a, %d %b %Y %H:%M:%S %z')
-
+				self.podcast_log.debug(episode_data)
 
 				if self.config['last_cast_dt'] == str(episode_data['published']):
 					self.podcast_log.info("RSS Reviewed: No new podcast available.")
@@ -154,7 +154,10 @@ class bot_podcasts(threading.Thread):
 					post_title = f"The Steve Dangle Podcast - {episode_data['title']}"
 
 					it_link = "https://itunes.apple.com/ca/podcast/steve-dangle-podcast/id669828195?mt=2"
-					yt_link = re.search("https://youtu\.be/.{11}", episode_data['summary']).group()		 	 # YT vid id is 11 chars
+					try: 
+						yt_link = re.search("https://youtu\.be/.{11}", episode_data['summary']).group()		 	 # YT vid id is 11 chars
+					except: 
+						yt_link = "https://www.youtube.com/channel/UC0a0z05HiddEn7k6OGnDprg" 			# Occasionally no youtube link
 					selftext =  textwrap.dedent(f"""\
 									New SteveDangle Podcast!
 									
@@ -170,6 +173,8 @@ class bot_podcasts(threading.Thread):
 
 									To submit a favourite SDP moment, comment: SDBotcast! Favourite (timetamp in HH:MM:SS format)""")
 					
+
+
 					# post the podcast to reddit & save to config.
 					podcastpost = self.reddit_dev.subreddit("SteveDangle").submit(post_title, selftext = selftext)
 					podcastpost.mod.sticky()
@@ -253,7 +258,7 @@ class bot_youtube(threading.Thread):
 				dump_json("config.json",config)
 
 
-			time.sleep(1800)  	# 30 minutes
+			time.sleep(900)  	# 15 minutes
 		
 
 
@@ -265,15 +270,24 @@ def configure_logging():
 			Console: INFO and up notifcations, with truncated messages. 
 			File   : Complete debug information.
 	'''
+	silent_console = False
+	handlers = []
+
+
+
 	file_handler = logging.FileHandler('logfile.log', encoding= 'utf-8', mode='w')
 	file_handler.setLevel(logging.DEBUG)
-	console_handler = logging.StreamHandler()
-	console_handler.setLevel(logging.INFO)
-	console_handler.setFormatter(logging.Formatter(fmt='%(asctime)s | %(name)-18.18s | %(levelname)-4s | %(message)-72s'))	
+	handlers.append(file_handler)
+
+	if silent_console == False:
+		console_handler = logging.StreamHandler()
+		console_handler.setLevel(logging.INFO)
+		console_handler.setFormatter(logging.Formatter(fmt='%(asctime)s | %(name)-18.18s | %(levelname)-4s | %(message)-72s'))
+		handlers.append(console_handler)	
 
 	# Configure logging using the handlers. 
 	logging.basicConfig(
-		handlers=[file_handler,console_handler],
+		handlers=handlers,
 		level = logging.DEBUG,
 		format='%(asctime)s | %(name)-32.32s | %(levelname)-8.8s | %(message)s',
 		datefmt = '%Y-%m-%d %H:%M:%S'
