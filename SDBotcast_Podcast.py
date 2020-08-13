@@ -4,6 +4,7 @@ import textwrap	 		# standard module for removing trailing idnents in post strin
 import json		 		# https://docs.python.org/3/library/json.html
 import logging			# https://docs.python.org/3/library/logging.html
 
+# Non-standard modules
 import feedparser  	# rss parser: https://pythonhosted.org/feedparser/
 import praw 		# reddit api wrapper: https://praw.readthedocs.io/en/latest/
 
@@ -76,6 +77,8 @@ def main():
 										username		= reddit_keys['username'], 
 										password		= reddit_keys['password'])
 
+			# Checks submission format is valid with the sub (which is should be) and submits it, and stickeys it. 
+			reddit_dev.validate_on_submit = True 
 			podcastpost = reddit_dev.subreddit("SteveDangle").submit(post_title, selftext = selftext)
 			podcastpost.mod.sticky()
 			podcastpost.mod.suggested_sort(sort='new')
