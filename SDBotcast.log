@@ -1,0 +1,59 @@
+2020-08-17 16:17:57 | SDBotcast.Youtube                | INFO     | Youtube Video checker started
+2020-08-17 16:18:20 | SDBotcast.Youtube                | INFO     | Youtube Video checker started
+2020-08-17 16:19:25 | SDBotcast.Youtube                | INFO     | Youtube Video checker started
+2020-08-17 16:24:37 | SDBotcast.Youtube                | INFO     | Youtube Video checker started
+2020-08-17 16:24:37 | SDBotcast.Youtube                | INFO     | New Steve Dangle Video 4bMyWOX2HT4
+2020-08-17 16:24:37 | urllib3.connectionpool           | DEBUG    | Starting new HTTP connection (1): updatechecker.bryceboe.com:80
+2020-08-17 16:24:37 | prawcore                         | DEBUG    | Fetching: POST https://oauth.reddit.com/api/submit/
+2020-08-17 16:24:37 | prawcore                         | DEBUG    | Data: [('api_type', 'json'), ('kind', 'link'), ('nsfw', False), ('resubmit', True), ('sendreplies', True), ('spoiler', False), ('sr', 'SteveDangle'), ('title', '[Steve Dangle] PK Subban on the Leafs, Playing in the NHL, and his friend Dwayne'), ('url', 'https://www.youtube.com/watch?v=4bMyWOX2HT4'), ('validate_on_submit', False)]
+2020-08-17 16:24:37 | prawcore                         | DEBUG    | Params: {'raw_json': 1}
+2020-08-17 16:24:37 | urllib3.connectionpool           | DEBUG    | Starting new HTTPS connection (1): www.reddit.com:443
+2020-08-17 16:24:38 | urllib3.connectionpool           | DEBUG    | https://www.reddit.com:443 "POST /api/v1/access_token HTTP/1.1" 200 118
+2020-08-17 16:24:38 | urllib3.connectionpool           | DEBUG    | Starting new HTTPS connection (1): oauth.reddit.com:443
+2020-08-17 16:24:38 | urllib3.connectionpool           | DEBUG    | https://oauth.reddit.com:443 "POST /api/submit/?raw_json=1 HTTP/1.1" 200 201
+2020-08-17 16:24:38 | prawcore                         | DEBUG    | Response: 200 (201 bytes)
+2020-08-17 16:24:38 | prawcore                         | DEBUG    | Fetching: GET https://oauth.reddit.com/duplicates/ibm46p/
+2020-08-17 16:24:38 | prawcore                         | DEBUG    | Data: None
+2020-08-17 16:24:38 | prawcore                         | DEBUG    | Params: {'limit': 100, 'raw_json': 1}
+2020-08-17 16:24:38 | urllib3.connectionpool           | DEBUG    | https://oauth.reddit.com:443 "GET /duplicates/ibm46p/?limit=100&raw_json=1 HTTP/1.1" 200 1241
+2020-08-17 16:24:38 | prawcore                         | DEBUG    | Response: 200 (1241 bytes)
+2020-08-17 16:26:43 | SDBotcast.Youtube                | INFO     | Youtube Video checker started
+2020-08-17 16:26:43 | SDBotcast.Youtube                | INFO     | New Steve Dangle Video 4bMyWOX2HT4
+2020-08-17 16:26:43 | prawcore                         | DEBUG    | Fetching: POST https://oauth.reddit.com/api/submit/
+2020-08-17 16:26:43 | prawcore                         | DEBUG    | Data: [('api_type', 'json'), ('kind', 'link'), ('nsfw', False), ('resubmit', True), ('sendreplies', True), ('spoiler', False), ('sr', 'SteveDangle'), ('title', '[Steve Dangle] PK Subban on the Leafs, Playing in the NHL, and his friend Dwayne'), ('url', 'https://www.youtube.com/watch?v=4bMyWOX2HT4'), ('validate_on_submit', True)]
+2020-08-17 16:26:43 | prawcore                         | DEBUG    | Params: {'raw_json': 1}
+2020-08-17 16:26:43 | urllib3.connectionpool           | DEBUG    | Starting new HTTPS connection (1): www.reddit.com:443
+2020-08-17 16:26:44 | urllib3.connectionpool           | DEBUG    | https://www.reddit.com:443 "POST /api/v1/access_token HTTP/1.1" 200 118
+2020-08-17 16:26:44 | urllib3.connectionpool           | DEBUG    | Starting new HTTPS connection (1): oauth.reddit.com:443
+2020-08-17 16:26:44 | urllib3.connectionpool           | DEBUG    | https://oauth.reddit.com:443 "POST /api/submit/?raw_json=1 HTTP/1.1" 200 201
+2020-08-17 16:26:44 | prawcore                         | DEBUG    | Response: 200 (201 bytes)
+2020-08-17 16:26:44 | prawcore                         | DEBUG    | Fetching: GET https://oauth.reddit.com/duplicates/ibm5oa/
+2020-08-17 16:26:44 | prawcore                         | DEBUG    | Data: None
+2020-08-17 16:26:44 | prawcore                         | DEBUG    | Params: {'limit': 100, 'raw_json': 1}
+2020-08-17 16:26:44 | urllib3.connectionpool           | DEBUG    | https://oauth.reddit.com:443 "GET /duplicates/ibm5oa/?limit=100&raw_json=1 HTTP/1.1" 200 2212
+2020-08-17 16:26:44 | prawcore                         | DEBUG    | Response: 200 (2212 bytes)
+2020-08-17 16:26:44 | prawcore                         | DEBUG    | Fetching: POST https://oauth.reddit.com/api/del/
+2020-08-17 16:26:44 | prawcore                         | DEBUG    | Data: [('api_type', 'json'), ('id', 't3_ibm5oa')]
+2020-08-17 16:26:44 | prawcore                         | DEBUG    | Params: {'raw_json': 1}
+2020-08-17 16:26:45 | urllib3.connectionpool           | DEBUG    | https://oauth.reddit.com:443 "POST /api/del/?raw_json=1 HTTP/1.1" 200 2
+2020-08-17 16:26:45 | prawcore                         | DEBUG    | Response: 200 (2 bytes)
+2020-08-17 16:27:07 | SDBotcast.Youtube                | INFO     | Youtube Video checker started
+2020-08-17 16:27:08 | SDBotcast.Youtube                | INFO     | New Steve Dangle Video 4bMyWOX2HT4
+2020-08-17 16:27:08 | prawcore                         | DEBUG    | Fetching: POST https://oauth.reddit.com/api/submit/
+2020-08-17 16:27:08 | prawcore                         | DEBUG    | Data: [('api_type', 'json'), ('kind', 'link'), ('nsfw', False), ('resubmit', True), ('sendreplies', True), ('spoiler', False), ('sr', 'SteveDangle'), ('title', '[Steve Dangle] PK Subban on the Leafs, Playing in the NHL, and his friend Dwayne'), ('url', 'https://www.youtube.com/watch?v=4bMyWOX2HT4'), ('validate_on_submit', True)]
+2020-08-17 16:27:08 | prawcore                         | DEBUG    | Params: {'raw_json': 1}
+2020-08-17 16:27:08 | urllib3.connectionpool           | DEBUG    | Starting new HTTPS connection (1): www.reddit.com:443
+2020-08-17 16:27:08 | urllib3.connectionpool           | DEBUG    | https://www.reddit.com:443 "POST /api/v1/access_token HTTP/1.1" 200 118
+2020-08-17 16:27:08 | urllib3.connectionpool           | DEBUG    | Starting new HTTPS connection (1): oauth.reddit.com:443
+2020-08-17 16:27:09 | urllib3.connectionpool           | DEBUG    | https://oauth.reddit.com:443 "POST /api/submit/?raw_json=1 HTTP/1.1" 200 201
+2020-08-17 16:27:09 | prawcore                         | DEBUG    | Response: 200 (201 bytes)
+2020-08-17 16:27:09 | prawcore                         | DEBUG    | Fetching: GET https://oauth.reddit.com/duplicates/ibm5y5/
+2020-08-17 16:27:09 | prawcore                         | DEBUG    | Data: None
+2020-08-17 16:27:09 | prawcore                         | DEBUG    | Params: {'limit': 100, 'raw_json': 1}
+2020-08-17 16:27:09 | urllib3.connectionpool           | DEBUG    | https://oauth.reddit.com:443 "GET /duplicates/ibm5y5/?limit=100&raw_json=1 HTTP/1.1" 200 2190
+2020-08-17 16:27:09 | prawcore                         | DEBUG    | Response: 200 (2190 bytes)
+2020-08-17 16:27:09 | prawcore                         | DEBUG    | Fetching: POST https://oauth.reddit.com/api/del/
+2020-08-17 16:27:09 | prawcore                         | DEBUG    | Data: [('api_type', 'json'), ('id', 't3_ibm5y5')]
+2020-08-17 16:27:09 | prawcore                         | DEBUG    | Params: {'raw_json': 1}
+2020-08-17 16:27:09 | urllib3.connectionpool           | DEBUG    | https://oauth.reddit.com:443 "POST /api/del/?raw_json=1 HTTP/1.1" 200 2
+2020-08-17 16:27:09 | prawcore                         | DEBUG    | Response: 200 (2 bytes)

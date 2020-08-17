@@ -23,6 +23,7 @@ class bot_commands(threading.Thread):
 		"Favourite" :	"(SDBotcast! Favourite|Favorite|favourite|favorite) (\d\d:\d\d:\d\d|\d:\d\d:\d\d)",
 		"Hotdog" 	:	"(?:^|(?<=[.?!])) ?(?:IS|Is|is) ?a? ([a-zA-Z]{3,16}) ?a? ([a-zA-Z]{3,16})\?",
 		"SoftMotherfucker" : "(?i)@ ?soft ?mother ?fucker"
+		#"ThisTeamIsRuiningMyLife":  command that just posts the AsciIntro/SDPlogothing.
 	}
 
 	
@@ -140,7 +141,7 @@ def configure_logging():
 
 
 
-	file_handler = logging.FileHandler('logfile.log', encoding= 'utf-8', mode='w')
+	file_handler = logging.FileHandler('SDBotcast.log', encoding= 'utf-8')
 	file_handler.setLevel(logging.DEBUG)
 	handlers.append(file_handler)
 

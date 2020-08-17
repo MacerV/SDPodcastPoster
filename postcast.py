@@ -10,11 +10,8 @@ import praw 		# reddit api wrapper: https://praw.readthedocs.io/en/latest/
 
 
 def configure_logging():
-
-
-
 	handlers = []
-	file_handler = logging.FileHandler('SDBotPod.log', encoding= 'utf-8')
+	file_handler = logging.FileHandler('SDBotcast.log', encoding= 'utf-8')
 	handlers.append(file_handler)
 
 	logging.basicConfig(
@@ -33,12 +30,10 @@ def main():
 	with open("config.json", 'r') as f:
 		config = json.load(f)
 
-
-
 	## Main Execution
 	podcast_log.info("Podcast Check started.")
 	try: 
-		# Get data of latest podcast, and format date to datetime.
+		# Get data of latest podcast from Soundcloud, and format date to datetime.
 		cast = feedparser.parse(config['rss_feed']).entries[0]
 		episode_data = {k: cast[k] for k in ('id','title', 'published','link','itunes_duration','summary')}
 		episode_data['published'] = datetime.datetime.strptime(episode_data['published'],'%a, %d %b %Y %H:%M:%S %z')
@@ -53,19 +48,19 @@ def main():
 			# Parsing reddit post information.
 			post_title = f"The Steve Dangle Podcast - {episode_data['title']}"
 			it_link = "https://itunes.apple.com/ca/podcast/steve-dangle-podcast/id669828195?mt=2"
+			yt_link = "https://www.youtube.com/channel/UC0a0z05HiddEn7k6OGnDprg" 						#Backup default  link
 			try: 
 				yt_link = re.search("https://youtu\.be/.{11}", episode_data['summary']).group()		 	 # YT vid id is 11 chars
 			except: 
-				yt_link = "https://www.youtube.com/channel/UC0a0z05HiddEn7k6OGnDprg" 			# Occasionally no youtube link
+				podcast_log.warning("Youtube link not found in podcast description")
+
 			selftext =  textwrap.dedent(f"""\
-						New SteveDangle Podcast!
-						
-						Title: {episode_data['title']}
+						Places to listen to the new SteveDangle Podcast! 
+
+						|[SoundCloud]({episode_data['link']})|[Itunes]({it_link})[Youtube]({yt_link})|
 
 						Duration: {episode_data['itunes_duration']}
 						
-						|[SoundCloud]({episode_data['link']})|[Itunes]({it_link})[Youtube]({yt_link})|
-
 						To submit a favourite SDP moment, comment: SDBotcast! Favourite (timetamp in HH:MM:SS format)""")
 
 			# post the podcast to reddit & save to config.
